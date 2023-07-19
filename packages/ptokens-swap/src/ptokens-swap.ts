@@ -24,10 +24,10 @@ export class pTokensSwap {
    * @param destinationAssets - The pTokensAsset array that will be destination assets for the swap.
    * @param amount - The amount of source asset that will be swapped.
    */
-  constructor(sourceAsset: pTokensAsset, destinationAssets: DestinationInfo[], amount: BigNumber) {
+  constructor(sourceAsset: pTokensAsset, destinationAssets: DestinationInfo[], amount: BigNumber.Value) {
     this._sourceAsset = sourceAsset
     this._destinationAssets = destinationAssets
-    this._amount = amount
+    this._amount = BigNumber(amount)
     this._controller = new AbortController()
     if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
   }

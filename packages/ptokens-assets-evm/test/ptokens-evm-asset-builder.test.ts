@@ -18,7 +18,8 @@ describe('EVM asset', () => {
       underlyingAssetName: 'Symbol',
       underlyingAssetTokenAddress: 'underlying-asset-token-address',
     }
-    const builder = new pTokensEvmAssetBuilder()
+    const provider = new pTokensEvmProvider('http://provider.eth')
+    const builder = new pTokensEvmAssetBuilder(provider)
     builder.setBlockchain(NetworkId.SepoliaTestnet)
     builder.setDecimals(18)
     builder.setAssetInfo(assetInfo)
@@ -43,8 +44,8 @@ describe('EVM asset', () => {
       underlyingAssetName: 'Symbol',
       underlyingAssetTokenAddress: 'underlying-asset-token-address',
     }
-    const provider = new pTokensEvmProvider()
-    const builder = new pTokensEvmAssetBuilder()
+    const provider = new pTokensEvmProvider('http://provider.eth')
+    const builder = new pTokensEvmAssetBuilder(provider)
     builder.setBlockchain(NetworkId.SepoliaTestnet)
     builder.setAssetInfo(assetInfo)
     builder.setProvider(provider)
@@ -57,7 +58,8 @@ describe('EVM asset', () => {
   })
 
   test('Should not create an EVM asset without blockchain data', async () => {
-    const builder = new pTokensEvmAssetBuilder()
+    const provider = new pTokensEvmProvider('http://provider.eth')
+    const builder = new pTokensEvmAssetBuilder(provider)
     try {
       await builder.build()
       fail()
@@ -67,7 +69,8 @@ describe('EVM asset', () => {
   })
 
   test('Should not create an EVM asset without asset info', async () => {
-    const builder = new pTokensEvmAssetBuilder()
+    const provider = new pTokensEvmProvider('http://provider.eth')
+    const builder = new pTokensEvmAssetBuilder(provider)
     try {
       builder.setBlockchain(NetworkId.SepoliaTestnet)
       await builder.build()

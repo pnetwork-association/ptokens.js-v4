@@ -1,15 +1,18 @@
 import BigNumber from 'bignumber.js'
 import { NetworkId } from 'ptokens-constants'
-import Web3 from 'web3'
-import { Log, TransactionReceipt } from 'web3-core'
-import { AbiItem } from 'web3-utils'
+import { Web3, Log, TransactionReceipt } from 'web3'
+import { encodeEventSignature, decodeLog, encodeParameters } from 'web3-eth-abi'
+import { AbiEventFragment, ContractAbi } from 'web3-types'
+import { keccak256 } from 'web3-utils'
 
-export function onChainFormat(_amount: BigNumber, _decimals: number): BigNumber {
-  return _amount.multipliedBy(BigNumber(10).pow(_decimals))
+import events from '../abi/events'
+
+export function onChainFormat(_amount: BigNumber, _decimals: number): bigint {
+  return BigInt(_amount.multipliedBy(BigNumber(10).pow(_decimals)).toFixed())
 }
 
-export function offChainFormat(_amount: BigNumber, _decimals: number) {
-  return _amount.dividedBy(BigNumber(10).pow(_decimals))
+export function offChainFormat(_amount: bigint, _decimals: number) {
+  return BigNumber(_amount.toString()).dividedBy(BigNumber(10).pow(_decimals))
 }
 
 export async function getAccount(_web3: Web3): Promise<string> {
@@ -18,12 +21,7 @@ export async function getAccount(_web3: Web3): Promise<string> {
   return accounts[0]
 }
 
-export function getContract(
-  _web3: Web3,
-  _abi: AbiItem | AbiItem[],
-  _contractAddress: string,
-  _account: string = undefined
-) {
+export function getContract(_web3: Web3, _abi: ContractAbi, _contractAddress: string, _account: string = undefined) {
   const contract = new _web3.eth.Contract(_abi, _contractAddress)
   contract.defaultAccount = _account
   return contract
@@ -34,8 +32,6 @@ export async function getGasLimit(_web3: Web3) {
   return block.gasLimit
 }
 
-import events from '../abi/events.json'
-
 export enum EVENT_NAMES {
   OPERATION_QUEUED = 'OperationQueued',
   OPERATION_EXECUTED = 'OperationExecuted',
@@ -43,10 +39,9 @@ export enum EVENT_NAMES {
   USER_OPERATION = 'UserOperation',
 }
 
-export const eventNameToSignatureMap = new Map(
+export const eventNameToSignatureMap = new Map<string, string>(
   events.map((_event) => {
-    const web3 = new Web3()
-    const signature = web3.eth.abi.encodeEventSignature(_event as AbiItem)
+    const signature = encodeEventSignature(_event)
     return [_event.name, signature]
   })
 )
@@ -54,11 +49,11 @@ export const eventNameToSignatureMap = new Map(
 const topicToAbiMap = new Map(
   events.map((_event) => {
     const signature = eventNameToSignatureMap.get(_event.name)
-    return [signature, _event]
+    return [signature, _event as AbiEventFragment]
   })
 )
 
-const getOperationIdFromObj = (_web3: Web3, _obj: any) => {
+const getOperationIdFromObj = (_obj: any) => {
   const types = [
     'bytes32',
     'bytes32',
@@ -75,8 +70,8 @@ const getOperationIdFromObj = (_web3: Web3, _obj: any) => {
     'bytes',
     'bytes32',
   ]
-  return _web3.utils.keccak256(
-    _web3.eth.abi.encodeParameters(types, [
+  return keccak256(
+    encodeParameters(types, [
       _obj.originatingBlockHash || _obj.originBlockHash || _obj.blockHash,
       _obj.originatingTransactionHash || _obj.originTransactionHash || _obj.transactionHash,
       _obj.originatingNetworkId || _obj.originNetworkId || _obj.networkId,
@@ -96,18 +91,13 @@ const getOperationIdFromObj = (_web3: Web3, _obj: any) => {
 }
 
 const getEventInputsFromSignature = (_signature: string) => {
-  if (topicToAbiMap.has(_signature)) return topicToAbiMap.get(_signature).inputs
+  if (topicToAbiMap.has(_signature)) return [...topicToAbiMap.get(_signature).inputs]
   throw new Error(`Missing abi for event signature ${_signature}`)
 }
 
-const decodeLog = (_web3: Web3, _log: Log) =>
-  _web3.eth.abi.decodeLog(getEventInputsFromSignature(_log.topics[0]), _log.data, [])
-
 export const getOperationIdFromLog = (_log: Log, _networkId: NetworkId = null) => {
-  const web3 = new Web3()
-  const decodedLog = decodeLog(web3, _log)
+  const decodedLog = decodeLog(getEventInputsFromSignature(_log.topics[0].toString()), _log.data.toString(), [])
   return getOperationIdFromObj(
-    web3,
     Object.assign(
       {},
       decodedLog.operation ? decodedLog.operation : decodedLog,

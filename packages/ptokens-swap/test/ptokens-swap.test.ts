@@ -24,6 +24,7 @@ describe('pTokensSwap', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -39,9 +40,10 @@ describe('pTokensSwap', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
-      provider: assetProvider,
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
+      provider: assetProvider,
     })
     const swapSpy = jest.spyOn(sourceAsset, 'swap')
     const swap = new pTokensSwap(
@@ -104,6 +106,7 @@ describe('pTokensSwap', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -119,6 +122,7 @@ describe('pTokensSwap', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
       provider: assetProvider,
@@ -188,6 +192,7 @@ describe('pTokensSwap', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -203,9 +208,10 @@ describe('pTokensSwap', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
-      provider: assetProvider,
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
+      provider: assetProvider,
     })
     const swapSpy = jest.spyOn(sourceAsset, 'swap')
     const waitForTransactionConfirmationSpy = jest.spyOn(assetProvider, 'waitForTransactionConfirmation')

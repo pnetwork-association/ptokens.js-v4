@@ -2,12 +2,10 @@ import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
 import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
-import { TransactionReceipt } from 'web3-core'
-import { AbiItem } from 'web3-utils'
 
 // import receipt from '../test/utils/receiptUserSend.json'
 
-import pRouterAbi from './abi/PRouterAbi.json'
+import pRouterAbi from './abi/PRouterAbi'
 import { getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
@@ -54,25 +52,27 @@ export class pTokensEvmAsset extends pTokensAsset {
               this.assetInfo.underlyingAssetTokenAddress,
               this.assetInfo.underlyingAssetNetworkId,
               this.assetInfo.assetTokenAddress,
-              onChainFormat(_amount, this.assetInfo.decimals).toFixed(),
+              onChainFormat(_amount, this.assetInfo.decimals),
               _userData.toString(),
               _optionsMask,
             ]
-            const txReceipt: TransactionReceipt = await this._provider
+            const txReceipt = await this._provider
               .makeContractSend(
                 {
                   method: USER_SEND_METHOD,
-                  abi: pRouterAbi as unknown as AbiItem,
+                  abi: pRouterAbi,
                   contractAddress: this.routerAddress,
-                  value: BigNumber(0),
+                  value: '0',
                 },
                 args
               )
-              .once('txBroadcasted', (_hash) => promi.emit('txBroadcasted', { txHash: _hash }))
+              .once('txBroadcasted', (_hash: string) => {
+                promi.emit('txBroadcasted', { txHash: _hash })
+              })
               .once('txError', reject)
-              .then((_receipt) => this.provider.getTransactionReceipt(_receipt.transactionHash))
+              .then((_receipt) => this.provider.getTransactionReceipt(_receipt.transactionHash.toString()))
             const ret = {
-              txHash: txReceipt.transactionHash,
+              txHash: txReceipt.transactionHash.toString(),
               operationId: getOperationIdFromTransactionReceipt(this.networkId, txReceipt),
             }
             promi.emit('txConfirmed', ret)

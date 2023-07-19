@@ -1,11 +1,19 @@
-import BigNumber from 'bignumber.js'
 import polling from 'light-async-polling'
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
-import Web3 from 'web3'
-import { Log, provider, TransactionReceipt } from 'web3-core'
-import { AbiItem } from 'web3-utils'
+import {
+  DEFAULT_RETURN_FORMAT,
+  Web3,
+  TransactionReceipt,
+  Log,
+  ContractAbi,
+  SupportedProviders,
+  EthExecutionAPI,
+} from 'web3'
+import { SendTransactionEvents } from 'web3/lib/commonjs/eth.exports'
+import { Web3PromiEvent } from 'web3-core'
+import { PayableTxOptions } from 'web3-eth-contract'
 
 import { EVENT_NAMES, eventNameToSignatureMap, getAccount, getContract, getOperationIdFromLog } from './lib/'
 
@@ -15,38 +23,38 @@ export type MakeContractSendOptions = {
   /** The method to be called. */
   method: string
   /** The contract ABI. */
-  abi: AbiItem | AbiItem[]
+  abi: ContractAbi
   /** The contract address. */
   contractAddress: string
   /** The value being sent with the transaction. */
-  value: BigNumber
+  value: string
   /** The gas limit for the transaction. */
-  gasLimit?: number
+  gasLimit?: string
 }
 
 export type MakeContractCallOptions = {
   /** The method to be called. */
   method: string
   /** The contract ABI. */
-  abi: AbiItem
+  abi: ContractAbi
   /** The contract address. */
   contractAddress: string
 }
 
-class SendOptions {
+class SendOptions implements PayableTxOptions {
   from: string
-  value: BigNumber
-  gasPrice: number
-  gas: number
-  constructor(from: string, value: BigNumber) {
+  value: string
+  gasPrice: string
+  gas: string
+  constructor(from: string, value: string) {
     this.from = from
     this.value = value
   }
-  maybeSetGasPrice(gasPrice: number) {
+  maybeSetGasPrice(gasPrice: string) {
     if (gasPrice) this.gasPrice = gasPrice
     return this
   }
-  maybeSetGasLimit(gasLimit: number) {
+  maybeSetGasLimit(gasLimit: string) {
     if (gasLimit) this.gas = gasLimit
     return this
   }
@@ -54,16 +62,15 @@ class SendOptions {
 
 export class pTokensEvmProvider implements pTokensAssetProvider {
   private _web3: Web3
-  private _gasPrice: number
-  private _gasLimit: number
+  private _gasPrice: string
+  private _gasLimit: string
 
   /**
    * Create and initialize a pTokensEvmProvider object.
    * @param _provider - A web3.js provider (refer to https://web3js.readthedocs.io/en/v1.8.0/web3.html#setprovider).
    */
-  constructor(_provider?: provider) {
-    this._web3 = new Web3()
-    if (_provider) this._web3.setProvider(_provider)
+  constructor(_provider: string | SupportedProviders<EthExecutionAPI>) {
+    this._web3 = new Web3(_provider)
   }
 
   /**
@@ -78,8 +85,8 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas price to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasPrice(_gasPrice: number) {
-    if (_gasPrice <= 0 || _gasPrice >= 1e12) {
+  setGasPrice(_gasPrice: string) {
+    if (BigInt(_gasPrice) <= 0n || BigInt(_gasPrice) >= 1e12) {
       throw new Error('Invalid gas price')
     }
     this._gasPrice = _gasPrice
@@ -98,8 +105,8 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas limit to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasLimit(_gasLimit: number) {
-    if (_gasLimit <= 0 || _gasLimit >= 10e6) {
+  setGasLimit(_gasLimit: string) {
+    if (BigInt(_gasLimit) <= 0 || BigInt(_gasLimit) >= 10e6) {
       throw new Error('Invalid gas limit')
     }
     this._gasLimit = _gasLimit
@@ -140,7 +147,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _args - The arguments to be passed to the contract method being called.
    * @returns A PromiEvent that resolves with the hash of the resulting transaction.
    */
-  makeContractSend(_options: MakeContractSendOptions, _args: any[] = []) {
+  makeContractSend<T extends unknown[] = []>(_options: MakeContractSendOptions, _args: T | [] = []) {
     const promi = new PromiEvent<TransactionReceipt>(
       (resolve, reject) =>
         (async () => {
@@ -148,16 +155,26 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
             const { method, abi, contractAddress, value, gasLimit } = _options
             const account = await getAccount(this._web3)
             const contract = getContract(this._web3, abi, contractAddress, account)
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            const receipt: TransactionReceipt = await contract.methods[method](..._args)
+            const b = contract.methods[method] as (...args: T | []) => {
+              send: (
+                opts?: PayableTxOptions
+              ) => Web3PromiEvent<TransactionReceipt, SendTransactionEvents<typeof DEFAULT_RETURN_FORMAT>>
+            }
+            const receipt = b(..._args)
               .send(
                 new SendOptions(account, value)
                   .maybeSetGasLimit(gasLimit || this.gasLimit)
                   .maybeSetGasPrice(this.gasPrice)
               )
-              .once('transactionHash', (_hash: string) => promi.emit('txBroadcasted', _hash))
-              .once('receipt', (_receipt: TransactionReceipt) => promi.emit('txConfirmed', _receipt))
-              .once('error', (_error: Error) => promi.emit('txError', _error))
+              .once('transactionHash', (_hash) => {
+                promi.emit('txBroadcasted', _hash)
+              })
+              .once('receipt', (_receipt) => {
+                promi.emit('txConfirmed', _receipt)
+              })
+              .once('error', (_error) => {
+                promi.emit('txError', _error)
+              })
             return resolve(receipt)
           } catch (_err) {
             return reject(_err)
@@ -174,12 +191,15 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _args - The arguments to be passed to the contract method being called.
    * @returns A Promise that resolves with the return value(s) of the smart contract method.
    */
-  async makeContractCall(_options: MakeContractCallOptions, _args: any[] = []): Promise<any> {
+  async makeContractCall<R, T extends unknown[] = []>(
+    _options: MakeContractCallOptions,
+    _args: T | [] = []
+  ): Promise<R> {
     const { method, abi, contractAddress } = _options
     const account = await getAccount(this._web3)
     const contract = getContract(this._web3, abi, contractAddress, account)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    return contract.methods[method](..._args).call() as Promise<any>
+    const b = contract.methods[method] as (...args: T | []) => { call: () => Promise<R> }
+    return b(..._args).call()
   }
 
   async waitForTransactionConfirmation(_tx: string, _pollingTime = 1000) {
@@ -195,13 +215,13 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         return false
       }
     }, _pollingTime)
-    return receipt.transactionHash
+    return receipt.transactionHash.toString()
   }
 
   protected async _pollForStateManagerOperation(
     _stateManagerAddress: string,
     _eventName: EVENT_NAMES,
-    _fromBlock: number,
+    _fromBlock: bigint,
     _operationId: string,
     _pollingTime = 1000
   ) {
@@ -209,11 +229,11 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await polling(async () => {
       try {
-        const logs = await this._web3.eth.getPastLogs({
+        const logs = (await this._web3.eth.getPastLogs({
           fromBlock: _fromBlock,
           address: _stateManagerAddress,
           topics: [eventNameToSignatureMap.get(_eventName)],
-        })
+        })) as Log[]
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
         if (log) return true
         return false
@@ -229,7 +249,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       (resolve, reject) =>
         (async () => {
           try {
-            const fromBlock = (await this.getLatestBlockNumber()) - BLOCK_OFFSET
+            const fromBlock = (await this.getLatestBlockNumber()) - BigInt(BLOCK_OFFSET)
             await this._pollForStateManagerOperation(
               _stateManagerAddress,
               EVENT_NAMES.OPERATION_QUEUED,
@@ -249,17 +269,18 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
                 promi.emit('operationExecuted', _log.transactionHash)
                 return _log
               }),
-              this._pollForStateManagerOperation(
-                _stateManagerAddress,
-                EVENT_NAMES.OPERATION_CANCELLED,
-                fromBlock,
-                _operationId
-              ).then((_log) => {
-                promi.emit('operationCancelled', _log.transactionHash)
-                return _log
-              }),
+              // TODO: need a way to stop this polling whenever the OPERATION_EXECUTED polling resolves
+              // this._pollForStateManagerOperation(
+              //   _stateManagerAddress,
+              //   EVENT_NAMES.OPERATION_CANCELLED,
+              //   fromBlock,
+              //   _operationId
+              // ).then((_log) => {
+              //   promi.emit('operationCancelled', _log.transactionHash)
+              //   return _log
+              // }),
             ])
-            return resolve(finalTxLog.transactionHash)
+            return resolve(finalTxLog.transactionHash.toString())
           } catch (_err) {
             return reject(_err)
           }

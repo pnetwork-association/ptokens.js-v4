@@ -65,7 +65,7 @@ export class pTokensSwapBuilder {
    * @param _amount - The amount of source asset that will be swapped.
    * @returns The same builder. This allows methods chaining.
    */
-  setAmount(_amount: number | string) {
+  setAmount(_amount: BigNumber.Value) {
     this._amount = BigNumber(_amount)
     return this
   }

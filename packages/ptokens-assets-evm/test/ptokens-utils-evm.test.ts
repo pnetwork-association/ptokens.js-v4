@@ -1,11 +1,10 @@
 import BigNumber from 'bignumber.js'
 import { stringUtils } from 'ptokens-helpers'
-import Web3 from 'web3'
-import { AbiItem } from 'web3-utils'
+import { Web3 } from 'web3'
 
 import * as utils from '../src/lib'
 
-const abi = require('./utils/exampleContractABI.json')
+import abi from './utils/exampleContractABI'
 
 const TEST_CONTRACT_ADDRESS = '0x15FA11dFB23eae46Fda69fB6A148f41677B4a090'
 const TEST_ETH_PRIVATE_KEY = '422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742'
@@ -13,18 +12,18 @@ const TEST_ETH_PROVIDER = 'https://goerli.infura.io/v3/4762c881ac0c4938be7638633
 
 describe('ethereum utilities', () => {
   test('Should return the correct Ethereum off-chain format', () => {
-    const onChainAmount = new BigNumber(10000)
+    const onChainAmount = 10000n
     const decimals = 4
     const expectedOffChainAmount = '1'
-    const offChainAmount = utils.offChainFormat(onChainAmount, decimals).toFixed()
+    const offChainAmount = utils.offChainFormat(onChainAmount, decimals)
     expect(offChainAmount).toStrictEqual(expectedOffChainAmount)
   })
 
   test('Should return the correct Ethereum on-chain format', () => {
-    const offChainAmount = new BigNumber(1)
+    const offChainAmount = BigNumber(1)
     const decimals = 4
     const expectedOnChainAmount = '10000'
-    const onChainAmount = utils.onChainFormat(offChainAmount, decimals).toFixed()
+    const onChainAmount = utils.onChainFormat(offChainAmount, decimals)
     expect(onChainAmount).toStrictEqual(expectedOnChainAmount)
   })
 
@@ -50,16 +49,16 @@ describe('ethereum utilities', () => {
 
   test('Should return a valid Web3.eth.Contract instance', () => {
     const web3 = new Web3(TEST_ETH_PROVIDER)
-    const contract = utils.getContract(web3, abi as unknown as AbiItem, TEST_CONTRACT_ADDRESS)
-    const expectedContract = new web3.eth.Contract(abi as unknown as AbiItem, TEST_CONTRACT_ADDRESS)
+    const contract = utils.getContract(web3, abi, TEST_CONTRACT_ADDRESS)
+    const expectedContract = new web3.eth.Contract(abi, TEST_CONTRACT_ADDRESS)
     expect(JSON.stringify(contract)).toStrictEqual(JSON.stringify(expectedContract))
   })
 
   test('Should return a valid Web3.eth.Contract instance with default account', () => {
     const web3 = new Web3(TEST_ETH_PROVIDER)
     const account = web3.eth.accounts.privateKeyToAccount(stringUtils.addHexPrefix(TEST_ETH_PRIVATE_KEY))
-    const contract = utils.getContract(web3, abi as unknown as AbiItem, TEST_CONTRACT_ADDRESS, account.address)
-    const expectedContract = new web3.eth.Contract(abi as unknown as AbiItem, TEST_CONTRACT_ADDRESS)
+    const contract = utils.getContract(web3, abi, TEST_CONTRACT_ADDRESS, account.address)
+    const expectedContract = new web3.eth.Contract(abi, TEST_CONTRACT_ADDRESS)
     expectedContract.defaultAccount = account.address
     expect(JSON.stringify(contract)).toStrictEqual(JSON.stringify(expectedContract))
   })

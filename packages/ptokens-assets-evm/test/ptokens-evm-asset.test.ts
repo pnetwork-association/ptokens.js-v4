@@ -1,13 +1,12 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
 import { Blockchain, NetworkId, Network } from 'ptokens-constants'
-import { TransactionReceipt } from 'web3-core'
+import { TransactionReceipt } from 'web3-types'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
+import pRouterAbi from '../src/abi/PRouterAbi'
 
 import receipt from './utils/receiptUserSend.json'
-
-const pRouterAbi = require('../src/abi/PRouterAbi.json')
 
 describe('EVM asset', () => {
   beforeEach(() => {
@@ -28,6 +27,7 @@ describe('EVM asset', () => {
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
+        factoryAddress: 'factory-address',
         routerAddress: 'router-address',
         stateManagerAddress: 'state-manager-address',
       })
@@ -57,6 +57,7 @@ describe('EVM asset', () => {
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
+        factoryAddress: 'factory-address',
         routerAddress: 'router-address',
         stateManagerAddress: 'state-manager-address',
       })
@@ -69,7 +70,7 @@ describe('EVM asset', () => {
     })
 
     test('Should call makeContractSend with userSend', async () => {
-      const provider = new pTokensEvmProvider()
+      const provider = new pTokensEvmProvider('http://provider.eth')
       const getTransactionReceiptSpy = jest.fn().mockResolvedValue(receipt)
       provider['_web3'].eth.getTransactionReceipt = getTransactionReceiptSpy
       const makeContractSendSpy = jest.spyOn(provider, 'makeContractSend').mockImplementation(() => {
@@ -95,6 +96,7 @@ describe('EVM asset', () => {
           underlyingAssetName: 'underlying-asset-name',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
+        factoryAddress: 'factory-address',
         routerAddress: 'router-address',
         stateManagerAddress: 'state-manager-address',
       })
@@ -122,7 +124,7 @@ describe('EVM asset', () => {
           abi: pRouterAbi,
           contractAddress: 'router-address',
           method: 'userSend',
-          value: BigNumber(0),
+          value: '0',
         },
         [
           'destination-address',
@@ -141,7 +143,7 @@ describe('EVM asset', () => {
     })
 
     test('Should reject if makeContractSend rejects', async () => {
-      const provider = new pTokensEvmProvider()
+      const provider = new pTokensEvmProvider('http://provider.eth')
       jest.spyOn(provider, 'makeContractSend').mockImplementation(() => {
         const promi = new PromiEvent<TransactionReceipt>((resolve, reject) => {
           return reject(new Error('makeContractSend error'))
@@ -161,6 +163,7 @@ describe('EVM asset', () => {
           underlyingAssetName: 'underlying-asset-name',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
+        factoryAddress: 'factory-address',
         routerAddress: 'router-address',
         stateManagerAddress: 'state-manager-address',
       })
@@ -178,7 +181,7 @@ describe('EVM asset', () => {
       })
 
       test('Should call provider monitorCrossChainOperations', async () => {
-        const provider = new pTokensEvmProvider()
+        const provider = new pTokensEvmProvider('http://provider.eth')
         const monitorCrossChainOperationsSpy = jest
           .spyOn(provider, 'monitorCrossChainOperations')
           .mockResolvedValue('tx-hash')
@@ -195,6 +198,7 @@ describe('EVM asset', () => {
             underlyingAssetName: 'underlying-asset-name',
             underlyingAssetTokenAddress: 'underlying-asset-token-address',
           },
+          factoryAddress: 'factory-address',
           routerAddress: 'router-address',
           stateManagerAddress: 'state-manager-address',
         })

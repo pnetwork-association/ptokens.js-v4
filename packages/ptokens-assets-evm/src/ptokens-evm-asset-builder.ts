@@ -1,8 +1,7 @@
 import { BlockchainType } from 'ptokens-constants'
 import { pTokensAssetBuilder } from 'ptokens-entities'
-import { AbiItem } from 'web3-utils'
 
-import factoryAbi from './abi/PFactroryAbi.json'
+import factoryAbi from './abi/PFactroryAbi'
 import { pTokensEvmAsset } from './ptokens-evm-asset'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
@@ -26,16 +25,22 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
 
   // eslint-disable-next-line @typescript-eslint/require-await
   protected async _build(): Promise<pTokensEvmAsset> {
-    const routerAddress: string = await this._provider.makeContractCall({
-      contractAddress: this.factoryAddress,
-      method: 'router',
-      abi: factoryAbi as unknown as AbiItem,
-    })
-    const stateManagerAddress: string = await this._provider.makeContractCall({
-      contractAddress: this.factoryAddress,
-      method: 'stateManager',
-      abi: factoryAbi as unknown as AbiItem,
-    })
+    const routerAddress = await this._provider.makeContractCall<string, []>(
+      {
+        contractAddress: this.factoryAddress,
+        method: 'router',
+        abi: factoryAbi,
+      },
+      []
+    )
+    const stateManagerAddress: string = await this._provider.makeContractCall<string, []>(
+      {
+        contractAddress: this.factoryAddress,
+        method: 'stateManager',
+        abi: factoryAbi,
+      },
+      []
+    )
     const config = {
       networkId: this._networkId,
       blockchain: this._blockchain,
