@@ -5,6 +5,7 @@ import resolve from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
 import cleanup from 'rollup-plugin-cleanup'
 import dts from 'rollup-plugin-dts'
+import nodeExternals from 'rollup-plugin-node-externals'
 
 const PACKAGE_ROOT_PATH = process.cwd()
 const PACKAGE_NAME = PACKAGE_ROOT_PATH.split('/').at(-1)
@@ -14,7 +15,6 @@ const extensions = ['.ts', '.tsx']
 export default [
   {
     input: `${PACKAGE_ROOT_PATH}/src/index.ts`,
-    external: [/@babel\/runtime/, /node_modules/],
     output: [
       {
         file: 'dist/bundle.cjs.js',
@@ -34,6 +34,7 @@ export default [
       commonjs(),
       resolve({ extensions }),
       json(),
+      nodeExternals(),
       cleanup(),
       Babel({
         extensions,
