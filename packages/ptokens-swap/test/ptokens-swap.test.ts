@@ -181,6 +181,7 @@ describe('pTokensSwap', () => {
 
   test('Should reject if swap fails', async () => {
     const builder = new pTokensSwapBuilder()
+    const sourceAssetProvider = new pTokensProviderMock()
     const sourceAsset = new pTokenAssetFailingMock({
       assetInfo: {
         networkId: NetworkId.SepoliaTestnet,
@@ -195,8 +196,9 @@ describe('pTokensSwap', () => {
       factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
+      provider: sourceAssetProvider,
     })
-    const assetProvider = new pTokensProviderMock()
+    const destinationAssetProvider = new pTokensProviderMock()
     const destinationAsset = new pTokenAssetMock({
       assetInfo: {
         networkId: NetworkId.GoerliTestnet,
@@ -211,10 +213,10 @@ describe('pTokensSwap', () => {
       factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
-      provider: assetProvider,
+      provider: destinationAssetProvider,
     })
     const swapSpy = jest.spyOn(sourceAsset, 'swap')
-    const waitForTransactionConfirmationSpy = jest.spyOn(assetProvider, 'waitForTransactionConfirmation')
+    const waitForTransactionConfirmationSpy = jest.spyOn(destinationAssetProvider, 'waitForTransactionConfirmation')
     builder
       .setAmount(123.456)
       .setSourceAsset(sourceAsset)

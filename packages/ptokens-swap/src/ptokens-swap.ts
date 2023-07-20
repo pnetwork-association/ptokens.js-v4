@@ -14,12 +14,9 @@ export class pTokensSwap {
   private _destinationAssets: DestinationInfo[]
   private _amount: BigNumber
   private _controller: AbortController
-  private _routerAddress: string
-  private _stateManagerAddress: string
 
   /**
    * Create and initialize a pTokensSwap object. pTokensSwap object shall be created using a pTokensSwapBuilder object.
-   * @param routerAddress - Address of a pTokens Router contract.
    * @param sourceAsset - The pTokensAsset that will be the source asset for the swap.
    * @param destinationAssets - The pTokensAsset array that will be destination assets for the swap.
    * @param amount - The amount of source asset that will be swapped.
@@ -30,13 +27,6 @@ export class pTokensSwap {
     this._amount = BigNumber(amount)
     this._controller = new AbortController()
     if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
-  }
-
-  /**
-   * Return the pTokens router address
-   */
-  get routerAddress(): string {
-    return this._routerAddress
   }
 
   /**
@@ -108,15 +98,10 @@ export class pTokensSwap {
     return this.destinationAssets[0]['monitorCrossChainOperations'](_operationId)
   }
 
-  private async waitOutputsConfirmation(_outputs: string[]) {
-    // TODO: for Algorand, the report contains the group ID, and algosdk.waitForConfirmation() cannot be used.
-    // Anyway, confirmation is fast, so we can simulate the function with a delay.
-    await this._destinationAssets[0].asset.provider.waitForTransactionConfirmation(_outputs[0])
-  }
-
   /**
    * Abort a running swap.
    */
+  /* istanbul ignore next */
   abort() {
     this._controller.abort()
   }

@@ -71,7 +71,7 @@ export class pTokensSwapBuilder {
   }
 
   private isValidSwap() {
-    return true
+    return true // TODO: check ptoken adresses are the same
   }
 
   /**

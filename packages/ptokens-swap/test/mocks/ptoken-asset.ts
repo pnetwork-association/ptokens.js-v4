@@ -3,13 +3,18 @@ import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokensAssetProvider, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 
 export class pTokensProviderMock implements pTokensAssetProvider {
+  /* istanbul ignore next */
   waitForTransactionConfirmation(_txHash: string): Promise<string> {
     return Promise.resolve(_txHash)
   }
   monitorCrossChainOperations(): PromiEvent<string> {
-    const promi = new PromiEvent<string>((resolve) => {
-      return resolve('tx-hash')
-    })
+    const promi = new PromiEvent<string>((resolve) =>
+      setImmediate(() => {
+        promi.emit('operationQueued', 'operation-queued-tx-hash')
+        promi.emit('operationExecuted', 'operation-executed-tx-hash')
+        return resolve('operation-executed-tx-hash')
+      })
+    )
     return promi
   }
 }
@@ -42,20 +47,14 @@ export class pTokenAssetMock extends pTokensAsset {
   }
 
   protected monitorCrossChainOperations(): PromiEvent<string> {
-    const promi = new PromiEvent<string>((resolve) =>
-      setImmediate(() => {
-        promi.emit('operationQueued', 'operation-queued-tx-hash')
-        promi.emit('operationExecuted', 'operation-executed-tx-hash')
-        return resolve('operation-executed-tx-hash')
-      })
-    )
-    return promi
+    return this.provider.monitorCrossChainOperations()
   }
 }
 
 export class pTokenAssetFailingMock extends pTokensAsset {
   private _provider: pTokensProviderMock
 
+  /* istanbul ignore next */
   get provider() {
     return this._provider
   }
@@ -75,6 +74,7 @@ export class pTokenAssetFailingMock extends pTokensAsset {
     return promi
   }
 
+  /* istanbul ignore next */
   protected monitorCrossChainOperations(): PromiEvent<string> {
     const promi = new PromiEvent<string>((resolve, reject) =>
       setImmediate(() => {
