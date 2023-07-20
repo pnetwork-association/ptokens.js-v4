@@ -18,7 +18,7 @@ describe('EVM provider', () => {
   test('Should throw with negative gas price', () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
     try {
-      provider.setGasPrice('-1')
+      provider.setGasPrice(-1)
       fail()
     } catch (err) {
       expect(err.message).toEqual('Invalid gas price')
@@ -28,7 +28,7 @@ describe('EVM provider', () => {
   test('Should throw with negative gas price', () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
     try {
-      provider.setGasPrice('1e12')
+      provider.setGasPrice(1e12)
       fail()
     } catch (err) {
       expect(err.message).toEqual('Invalid gas price')
@@ -38,7 +38,7 @@ describe('EVM provider', () => {
   test('Should throw with negative gas limit', () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
     try {
-      provider.setGasLimit('-1')
+      provider.setGasLimit(-1)
       fail()
     } catch (err) {
       expect(err.message).toEqual('Invalid gas limit')
@@ -48,7 +48,7 @@ describe('EVM provider', () => {
   test('Should throw with negative gas limit', () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
     try {
-      provider.setGasLimit('10e6')
+      provider.setGasLimit(10e6)
       fail()
     } catch (err) {
       expect(err.message).toEqual('Invalid gas limit')
@@ -104,7 +104,7 @@ describe('EVM provider', () => {
     )
     expect(res).toEqual(123456)
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(callMock).toHaveBeenNthCalledWith(1)
   })
@@ -140,7 +140,7 @@ describe('EVM provider', () => {
     )
     expect(res).toEqual(123456)
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(numberMock).toHaveBeenNthCalledWith(1)
     expect(callMock).toHaveBeenNthCalledWith(1)
   })
@@ -188,7 +188,7 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
   })
@@ -233,15 +233,15 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(numberMock).toHaveBeenNthCalledWith(1)
     expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
-    provider.setGasLimit('200000')
-    provider.setGasPrice('100e9')
+    provider.setGasLimit(200000)
+    provider.setGasPrice(100e9)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -283,7 +283,7 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(
       1,
@@ -291,14 +291,14 @@ describe('EVM provider', () => {
         from: 'evm-account',
         value: '1',
         gas: '200000',
-        gasPrice: '100e9',
+        gasPrice: '100000000000',
       })
     )
   })
 
   test('Should send a contract method with set gas price', async () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
-    provider.setGasPrice('100e9')
+    provider.setGasPrice(100e9)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -340,17 +340,17 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ from: 'evm-account', value: '1', gasPrice: '100e9' })
+      expect.objectContaining({ from: 'evm-account', value: '1', gasPrice: '100000000000' })
     )
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
     const provider = new pTokensEvmProvider('http://provider.eth')
-    provider.setGasLimit('200000')
+    provider.setGasLimit(200000)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -392,7 +392,7 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(
       1,
@@ -437,7 +437,7 @@ describe('EVM provider', () => {
     expect(txHash).toEqual({ transactionHash: 'tx-hash' })
     expect(txError.message).toStrictEqual('tx-error')
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
   })

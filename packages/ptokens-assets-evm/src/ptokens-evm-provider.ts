@@ -29,7 +29,7 @@ export type MakeContractSendOptions = {
   /** The value being sent with the transaction. */
   value: string
   /** The gas limit for the transaction. */
-  gasLimit?: string
+  gasLimit?: number
 }
 
 export type MakeContractCallOptions = {
@@ -50,20 +50,20 @@ class SendOptions implements PayableTxOptions {
     this.from = from
     this.value = value
   }
-  maybeSetGasPrice(gasPrice: string) {
-    if (gasPrice) this.gasPrice = gasPrice
+  maybeSetGasPrice(gasPrice: number) {
+    if (gasPrice) this.gasPrice = gasPrice.toString()
     return this
   }
-  maybeSetGasLimit(gasLimit: string) {
-    if (gasLimit) this.gas = gasLimit
+  maybeSetGasLimit(gasLimit: number) {
+    if (gasLimit) this.gas = gasLimit.toString()
     return this
   }
 }
 
 export class pTokensEvmProvider implements pTokensAssetProvider {
   private _web3: Web3
-  private _gasPrice: string
-  private _gasLimit: string
+  private _gasPrice: number
+  private _gasLimit: number
 
   /**
    * Create and initialize a pTokensEvmProvider object.
@@ -85,7 +85,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas price to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasPrice(_gasPrice: string) {
+  setGasPrice(_gasPrice: number) {
     if (BigInt(_gasPrice) <= 0n || BigInt(_gasPrice) >= 1e12) {
       throw new Error('Invalid gas price')
     }
@@ -105,8 +105,8 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas limit to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasLimit(_gasLimit: string) {
-    if (BigInt(_gasLimit) <= 0 || BigInt(_gasLimit) >= 10e6) {
+  setGasLimit(_gasLimit: number) {
+    if (_gasLimit <= 0 || _gasLimit >= 10e6) {
       throw new Error('Invalid gas limit')
     }
     this._gasLimit = _gasLimit
@@ -154,7 +154,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
           try {
             const { method, abi, contractAddress, value, gasLimit } = _options
             const account = await getAccount(this._web3)
-            const contract = getContract(this._web3, abi, contractAddress, account)
+            const contract = getContract(abi, contractAddress, account)
             const b = contract.methods[method] as (...args: T | []) => {
               send: (
                 opts?: PayableTxOptions
@@ -197,7 +197,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
   ): Promise<R> {
     const { method, abi, contractAddress } = _options
     const account = await getAccount(this._web3)
-    const contract = getContract(this._web3, abi, contractAddress, account)
+    const contract = getContract(abi, contractAddress, account)
     const b = contract.methods[method] as (...args: T | []) => { call: () => Promise<R> }
     return b(..._args).call()
   }

@@ -1,18 +1,18 @@
 import BigNumber from 'bignumber.js'
 import { NetworkId } from 'ptokens-constants'
-import { Web3, Log, TransactionReceipt } from 'web3'
+import { Web3, Log, TransactionReceipt, Contract } from 'web3'
 import { encodeEventSignature, decodeLog, encodeParameters } from 'web3-eth-abi'
 import { AbiEventFragment, ContractAbi } from 'web3-types'
 import { keccak256 } from 'web3-utils'
 
 import events from '../abi/events'
 
-export function onChainFormat(_amount: BigNumber, _decimals: number): bigint {
-  return BigInt(_amount.multipliedBy(BigNumber(10).pow(_decimals)).toFixed())
+export function onChainFormat(_amount: BigNumber.Value, _decimals: number): BigNumber {
+  return BigNumber(_amount).multipliedBy(BigNumber(10).pow(_decimals))
 }
 
-export function offChainFormat(_amount: bigint, _decimals: number) {
-  return BigNumber(_amount.toString()).dividedBy(BigNumber(10).pow(_decimals))
+export function offChainFormat(_amount: BigNumber.Value, _decimals: number) {
+  return BigNumber(_amount).dividedBy(BigNumber(10).pow(_decimals))
 }
 
 export async function getAccount(_web3: Web3): Promise<string> {
@@ -21,8 +21,8 @@ export async function getAccount(_web3: Web3): Promise<string> {
   return accounts[0]
 }
 
-export function getContract(_web3: Web3, _abi: ContractAbi, _contractAddress: string, _account: string = undefined) {
-  const contract = new _web3.eth.Contract(_abi, _contractAddress)
+export function getContract(_abi: ContractAbi, _contractAddress: string, _account: string = undefined) {
+  const contract = new Contract(_abi, _contractAddress)
   contract.defaultAccount = _account
   return contract
 }

@@ -52,7 +52,7 @@ export class pTokensEvmAsset extends pTokensAsset {
               this.assetInfo.underlyingAssetTokenAddress,
               this.assetInfo.underlyingAssetNetworkId,
               this.assetInfo.assetTokenAddress,
-              onChainFormat(_amount, this.assetInfo.decimals),
+              onChainFormat(_amount, this.assetInfo.decimals).toString(),
               _userData.toString(),
               _optionsMask,
             ]

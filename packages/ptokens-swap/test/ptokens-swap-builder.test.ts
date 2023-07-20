@@ -18,6 +18,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -33,6 +34,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -66,6 +68,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -81,6 +84,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -114,6 +118,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -129,6 +134,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -155,6 +161,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -182,6 +189,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -197,6 +205,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })
@@ -224,6 +233,7 @@ describe('pTokensSwapBuilder', () => {
         underlyingAssetName: 'Symbol',
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
+      factoryAddress: 'factory-address',
       routerAddress: 'router-address',
       stateManagerAddress: 'state-manager-address',
     })

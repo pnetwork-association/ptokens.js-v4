@@ -101,16 +101,16 @@ describe('EVM asset', () => {
         stateManagerAddress: 'state-manager-address',
       })
       let txHashBroadcasted = ''
-      let txHashConfirmed = ''
+      let swapResultConfirmed = null
       const ret = await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
         .on('txBroadcasted', (_txHash) => {
           txHashBroadcasted = _txHash
         })
-        .on('txConfirmed', (_txHash) => {
-          txHashConfirmed = _txHash
+        .on('txConfirmed', (_swapResult) => {
+          swapResultConfirmed = _swapResult
         })
       expect(txHashBroadcasted).toEqual({ txHash: 'tx-hash' })
-      expect(txHashConfirmed).toEqual({
+      expect(swapResultConfirmed).toEqual({
         operationId: '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
         txHash: '0xcd5f6d7d2aabd3af5269459b6310892f4e56aa0cfd05024ba16bcf901c9bccd2',
       })
