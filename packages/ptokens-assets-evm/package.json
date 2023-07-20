@@ -5,8 +5,8 @@
   "module": "dist/bundle.esm.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "rollup -c ../../rollup.config.js",
-    "dev": "rollup -c ../../rollup.config.js -w",
+    "build": "rollup -c ../../rollup.config.mjs",
+    "dev": "rollup -c ../../rollup.config.mjs -w",
     "lint": "eslint ./src/",
     "test": "jest",
     "type-check": "tsc --noEmit"

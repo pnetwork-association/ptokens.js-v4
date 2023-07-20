@@ -6,8 +6,8 @@
   "browser": "dist/bundle.umd.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "rollup -c ../../rollup.config.js",
-    "dev": "rollup -c ../../rollup.config.js -w",
+    "build": "rollup -c ../../rollup.config.mjs",
+    "dev": "rollup -c ../../rollup.config.mjs -w",
     "lint": "eslint ./src/",
     "type-check": "tsc --noEmit"
   },
