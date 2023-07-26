@@ -9,8 +9,7 @@ export type pTokenAssetConfig = {
   /** An AssetInfo object containing asset technical details. */
   assetInfo: AssetInfo
   factoryAddress: string
-  routerAddress: string
-  stateManagerAddress: string
+  hubAddress: string
   /** The asset weight during the swap. Defaults to 1. Actually it is not supported.  */
   weight?: number
 }
@@ -50,7 +49,7 @@ export type AssetInfo = {
   /** Token smart contract address. */
   assetTokenAddress: string
   /** Token's decimals. */
-  decimals?: number
+  decimals: number
   /** pNetwork enclave address. */
   identity?: string
   // /** Token-related fees. */
@@ -74,8 +73,7 @@ export type SwapResult = {
 
 export abstract class pTokensAsset {
   private _factoryAddress: string
-  private _routerAddress: string
-  private _stateManagerAddress: string
+  private _hubAddress: string
   private _assetInfo: AssetInfo
   private _weight: number
   private _type: BlockchainType
@@ -90,20 +88,15 @@ export abstract class pTokensAsset {
     this._assetInfo = _config.assetInfo
     this._weight = _config.weight || 1
     this._factoryAddress = _config.factoryAddress
-    this._routerAddress = _config.routerAddress
-    this._stateManagerAddress = _config.stateManagerAddress
+    this._hubAddress = _config.hubAddress
   }
 
   get factoryAddress(): string {
     return this._factoryAddress
   }
 
-  get routerAddress(): string {
-    return this._routerAddress
-  }
-
-  get stateManagerAddress(): string {
-    return this._stateManagerAddress
+  get hubAddress(): string {
+    return this._hubAddress
   }
 
   /** Return the token's symbol. */
@@ -162,7 +155,9 @@ export abstract class pTokensAsset {
     _destinationAddress: string,
     _destinationChainId: string,
     _userData?: string,
-    _optionsMask?: string
+    _optionsMask?: string,
+    _networkFees?: BigNumber,
+    _forwardNetworkFees?: BigNumber,
   ): PromiEvent<SwapResult>
 
   protected abstract monitorCrossChainOperations(_operationId: string): PromiEvent<string>

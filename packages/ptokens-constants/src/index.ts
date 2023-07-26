@@ -3,6 +3,7 @@ export enum NetworkId {
   GoerliTestnet = '0xb9286154',
   ArbitrumMainnet = '0xfc8ebb2b',
   GnosisMainnet = '0xd41b1c5b',
+  PolygonMainnet = '0xf9b459a1',
 }
 
 export enum BlockchainType {
@@ -17,6 +18,7 @@ export const networkIdToTypeMap = new Map<string, BlockchainType>([
   [NetworkId.GoerliTestnet, BlockchainType.EVM],
   [NetworkId.ArbitrumMainnet, BlockchainType.EVM],
   [NetworkId.GnosisMainnet, BlockchainType.EVM],
+  [NetworkId.PolygonMainnet, BlockchainType.EVM],
 ])
 
 export enum Blockchain {
@@ -46,6 +48,6 @@ export enum Network {
 }
 
 export const FactoryAddress = new Map<NetworkId, string>([
-  [NetworkId.ArbitrumMainnet, '0x42807B8Bbb9A345E0B8333bc8f0F7e946b724C64'],
-  [NetworkId.GnosisMainnet, '0x678eE2CD8e912693aa7933730F2b55c678136c34'],
+  [NetworkId.ArbitrumMainnet, '0xcf9De65e9bB5F7fE8643dA066aB6cBC691De0Fe7'],
+  [NetworkId.GnosisMainnet, '0x1f411C1b2AC7b3bB036E85AE2f4684fCd3FDbb98'],
 ])

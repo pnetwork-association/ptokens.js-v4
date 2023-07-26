@@ -5,8 +5,8 @@ import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 
 // import receipt from '../test/utils/receiptUserSend.json'
 
-import pRouterAbi from './abi/PRouterAbi'
-import { getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
+import pNetworkHubAbi from './abi/PNetworkHubAbi'
+import { ZERO_ADDRESS, getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
 const USER_SEND_METHOD = 'userSend'
@@ -36,7 +36,9 @@ export class pTokensEvmAsset extends pTokensAsset {
     _destinationAddress: string,
     _destinationChainId: string,
     _userData = '0x',
-    _optionsMask = '0x0000000000000000000000000000000000000000000000000000000000000000'
+    _optionsMask = '0x0000000000000000000000000000000000000000000000000000000000000000',
+    _networkFees = BigNumber(0),
+    _forwardNetworkFees = BigNumber(0),
   ): PromiEvent<SwapResult> {
     const promi = new PromiEvent<SwapResult>(
       (resolve, reject) =>
@@ -44,27 +46,31 @@ export class pTokensEvmAsset extends pTokensAsset {
           try {
             if (!this._provider) return reject(new Error('Missing provider'))
             const args = [
-              _destinationAddress,
-              _destinationChainId,
-              this.assetInfo.underlyingAssetName,
-              this.assetInfo.underlyingAssetSymbol,
-              this.assetInfo.underlyingAssetDecimals,
-              this.assetInfo.underlyingAssetTokenAddress,
-              this.assetInfo.underlyingAssetNetworkId,
-              this.assetInfo.assetTokenAddress,
-              onChainFormat(_amount, this.assetInfo.decimals).toString(),
-              _userData.toString(),
+              _destinationAddress, // destinationAccount
+              _destinationChainId, // destinationNetworkId
+              this.assetInfo.underlyingAssetName, // underlyingAssetName
+              this.assetInfo.underlyingAssetSymbol, // underlyingAssetSymbol
+              this.assetInfo.underlyingAssetDecimals, // underlyingAssetDecimals
+              this.assetInfo.underlyingAssetTokenAddress, // underlyingAssetTokenAddress
+              this.assetInfo.underlyingAssetNetworkId, // underlyingAssetNetworkId
+              this.assetInfo.assetTokenAddress, // assetTokenAddress
+              onChainFormat(_amount, this.assetInfo.decimals).toString(), // assetAmount
+              ZERO_ADDRESS, // protocolFeeAssetTokenAddress
+              0, // protocolFeeAssetAmount
+              _networkFees, // networkFeeAssetAmount
+              _forwardNetworkFees, // forwardNetworkFeeAssetAmount
+              _userData, // userData
               _optionsMask,
             ]
             const txReceipt = await this._provider
               .makeContractSend(
                 {
                   method: USER_SEND_METHOD,
-                  abi: pRouterAbi,
-                  contractAddress: this.routerAddress,
+                  abi: pNetworkHubAbi,
+                  contractAddress: this.hubAddress,
                   value: '0',
                 },
-                args
+                args,
               )
               .once('txBroadcasted', (_hash: string) => {
                 promi.emit('txBroadcasted', { txHash: _hash })
@@ -80,12 +86,12 @@ export class pTokensEvmAsset extends pTokensAsset {
           } catch (err) {
             return reject(err)
           }
-        })() as unknown
+        })() as unknown,
     )
     return promi
   }
 
   protected monitorCrossChainOperations(_operationId: string): PromiEvent<string> {
-    return this.provider.monitorCrossChainOperations(this.stateManagerAddress, _operationId)
+    return this.provider.monitorCrossChainOperations(this.hubAddress, _operationId)
   }
 }

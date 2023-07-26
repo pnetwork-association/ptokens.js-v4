@@ -150,6 +150,19 @@ export default [
   },
   {
     inputs: [],
+    name: 'hub',
+    outputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'owner',
     outputs: [
       {
@@ -169,55 +182,16 @@ export default [
     type: 'function',
   },
   {
-    inputs: [],
-    name: 'router',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [
       {
         internalType: 'address',
-        name: '_router',
+        name: 'hub_',
         type: 'address',
       },
     ],
-    name: 'setRouter',
+    name: 'setHub',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '_stateManager',
-        type: 'address',
-      },
-    ],
-    name: 'setStateManager',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'stateManager',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
     type: 'function',
   },
   {

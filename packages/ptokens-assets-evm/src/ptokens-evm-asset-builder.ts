@@ -25,14 +25,9 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
 
   // eslint-disable-next-line @typescript-eslint/require-await
   protected async _build(): Promise<pTokensEvmAsset> {
-    const routerAddress = await this._provider.makeContractCall<string, []>({
+    const hubAddress = await this._provider.makeContractCall<string, []>({
       contractAddress: this.factoryAddress,
-      method: 'router',
-      abi: factoryAbi,
-    })
-    const stateManagerAddress: string = await this._provider.makeContractCall<string, []>({
-      contractAddress: this.factoryAddress,
-      method: 'stateManager',
+      method: 'hub',
       abi: factoryAbi,
     })
     const config = {
@@ -42,8 +37,7 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
       assetInfo: this.assetInfo,
       provider: this._provider,
       factoryAddress: this.factoryAddress,
-      routerAddress,
-      stateManagerAddress,
+      hubAddress,
     }
     return new pTokensEvmAsset(config)
   }

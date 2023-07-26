@@ -7,6 +7,8 @@ import { keccak256 } from 'web3-utils'
 
 import events from '../abi/events'
 
+export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
 export function onChainFormat(_amount: BigNumber.Value, _decimals: number): BigNumber {
   return BigNumber(_amount).multipliedBy(BigNumber(10).pow(_decimals))
 }
@@ -21,8 +23,8 @@ export async function getAccount(_web3: Web3): Promise<string> {
   return accounts[0]
 }
 
-export function getContract(_abi: ContractAbi, _contractAddress: string, _account: string = undefined) {
-  const contract = new Contract(_abi, _contractAddress)
+export function getContract(_web3: Web3, _abi: ContractAbi, _contractAddress: string, _account: string = undefined) {
+  const contract = new _web3.eth.Contract(_abi, _contractAddress)
   contract.defaultAccount = _account
   return contract
 }
@@ -43,14 +45,14 @@ export const eventNameToSignatureMap = new Map<string, string>(
   events.map((_event) => {
     const signature = encodeEventSignature(_event)
     return [_event.name, signature]
-  })
+  }),
 )
 
 const topicToAbiMap = new Map(
   events.map((_event) => {
     const signature = eventNameToSignatureMap.get(_event.name)
     return [signature, _event as AbiEventFragment]
-  })
+  }),
 )
 
 const getOperationIdFromObj = (_obj: any) => {
@@ -86,7 +88,7 @@ const getOperationIdFromObj = (_obj: any) => {
       _obj.assetAmount,
       _obj.userData || '0x',
       _obj.optionsMask,
-    ])
+    ]),
   )
 }
 
@@ -105,8 +107,8 @@ export const getOperationIdFromLog = (_log: Log, _networkId: NetworkId = null) =
         transactionHash: _log.transactionHash,
         blockHash: _log.blockHash,
       },
-      _networkId ? { networkId: _networkId } : {}
-    )
+      _networkId ? { networkId: _networkId } : {},
+    ),
   )
 }
 
@@ -117,8 +119,8 @@ export const getOperationIdFromTransactionReceipt = (_networkId: NetworkId, _rec
         _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.USER_OPERATION) ||
         _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_QUEUED) ||
         _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_EXECUTED) ||
-        _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_CANCELLED)
+        _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_CANCELLED),
     ),
-    _networkId
+    _networkId,
   )
 }

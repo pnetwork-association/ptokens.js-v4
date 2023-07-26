@@ -5,6 +5,8 @@ import { SwapResult, pTokensAsset } from 'ptokens-entities'
 export type DestinationInfo = {
   asset: pTokensAsset
   destinationAddress: string
+  networkFees: BigNumber
+  forwardNetworkFees: BigNumber
   userData?: string
   toNative?: boolean
 }
@@ -23,6 +25,7 @@ export class pTokensSwap {
    */
   constructor(sourceAsset: pTokensAsset, destinationAssets: DestinationInfo[], amount: BigNumber.Value) {
     this._sourceAsset = sourceAsset
+    if (destinationAssets.length !== 1) throw new Error('There must be one and only one destination asset')
     this._destinationAssets = destinationAssets
     this._amount = BigNumber(amount)
     this._controller = new AbortController()
@@ -50,44 +53,38 @@ export class pTokensSwap {
     return this._amount.toFixed()
   }
 
-  // /**
-  //  * Return the pTokensNode set when creating the builder.
-  //  */
-  // private getSwapBasisPoints() {
-  //   // take the first destination asset as, for now, pNetwork supports just one destination
-  //   if ('nativeToNative' in this._sourceAsset.assetInfo.fees.basisPoints)
-  //     return this._sourceAsset.assetInfo.fees.basisPoints.nativeToNative
-  //   else if ('hostToNative' in this._sourceAsset.assetInfo.fees.basisPoints)
-  //     return this._sourceAsset.assetInfo.fees.basisPoints.hostToNative
-  //   else throw new Error('Invalid basis points')
-  // }
+  /**
+   * Return the pTokensNode set when creating the builder.
+   */
+  private getSwapBasisPoints() {
+    // take the first destination asset as, for now, pNetwork supports just one destination
+    return 20
+  }
 
-  // /**
-  //  * Get expected protocol fees for the swap
-  //  */
-  // get protocolFees() {
-  //   const interimAmount = this._amount.multipliedBy(1e18)
-  //   const basisPoints = this.getSwapBasisPoints()
-  //   return BigNumber.maximum(
-  //     this._sourceAsset.assetInfo.fees.minNodeOperatorFee,
-  //     interimAmount.multipliedBy(basisPoints).dividedBy(10000)
-  //   )
-  //     .dividedBy(1e18)
-  //     .toFixed()
-  // }
+  /**
+   * Get expected protocol fees for the swap
+   */
+  get protocolFees() {
+    const interimAmount = this._amount.multipliedBy(1e18)
+    const basisPoints = this.getSwapBasisPoints()
+    return BigNumber.maximum(interimAmount.multipliedBy(basisPoints).dividedBy(10000)).dividedBy(1e18).toFixed()
+  }
 
-  // /**
-  //  * Get expected network fees for the swap
-  //  */
-  // get networkFees() {
-  //   return BigNumber(this._destinationAssets[0].asset.assetInfo.fees.networkFee).dividedBy(1e18).toFixed()
-  // }
+  /**
+   * Get expected network fees for the swap
+   */
+  get networkFees() {
+    return BigNumber(this._destinationAssets[0].networkFees)
+      .plus(this._destinationAssets[0].forwardNetworkFees)
+      .dividedBy(1e18)
+      .toFixed()
+  }
 
   /**
    * Get expected output amount for the swap
    */
   get expectedOutputAmount() {
-    return this._amount.toFixed() // .minus(this.protocolFees).minus(this.networkFees).toFixed()
+    return this._amount.minus(this.protocolFees).minus(this.networkFees).toFixed()
   }
 
   private isAmountSufficient() {
@@ -132,7 +129,9 @@ export class pTokensSwap {
               this._destinationAssets[0].userData,
               this._destinationAssets[0].toNative
                 ? '0x0000000000000000000000000000000000000000000000000000000000000001'
-                : '0x0000000000000000000000000000000000000000000000000000000000000000'
+                : '0x0000000000000000000000000000000000000000000000000000000000000000',
+              this._destinationAssets[0].networkFees,
+              this._destinationAssets[0].forwardNetworkFees,
             )
               .on('txBroadcasted', (_swapResult: SwapResult) => {
                 promi.emit('inputTxBroadcasted', { txHash: _swapResult.txHash })
@@ -154,7 +153,7 @@ export class pTokensSwap {
           } catch (err) {
             return reject(err)
           }
-        })() as unknown
+        })() as unknown,
     )
     return promi
   }

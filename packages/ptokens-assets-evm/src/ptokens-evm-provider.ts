@@ -154,17 +154,17 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
           try {
             const { method, abi, contractAddress, value, gasLimit } = _options
             const account = await getAccount(this._web3)
-            const contract = getContract(abi, contractAddress, account)
+            const contract = getContract(this._web3, abi, contractAddress, account)
             const b = contract.methods[method] as (...args: T | []) => {
               send: (
-                opts?: PayableTxOptions
+                opts?: PayableTxOptions,
               ) => Web3PromiEvent<TransactionReceipt, SendTransactionEvents<typeof DEFAULT_RETURN_FORMAT>>
             }
             const receipt = b(..._args)
               .send(
                 new SendOptions(account, value)
                   .maybeSetGasLimit(gasLimit || this.gasLimit)
-                  .maybeSetGasPrice(this.gasPrice)
+                  .maybeSetGasPrice(this.gasPrice),
               )
               .once('transactionHash', (_hash) => {
                 promi.emit('txBroadcasted', _hash)
@@ -179,7 +179,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
           } catch (_err) {
             return reject(_err)
           }
-        })() as unknown
+        })() as unknown,
     )
     return promi
   }
@@ -193,11 +193,11 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    */
   async makeContractCall<R, T extends unknown[] = []>(
     _options: MakeContractCallOptions,
-    _args: T | [] = []
+    _args: T | [] = [],
   ): Promise<R> {
     const { method, abi, contractAddress } = _options
     const account = await getAccount(this._web3)
-    const contract = getContract(abi, contractAddress, account)
+    const contract = getContract(this._web3, abi, contractAddress, account)
     const b = contract.methods[method] as (...args: T | []) => { call: () => Promise<R> }
     return b(..._args).call()
   }
@@ -218,12 +218,12 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     return receipt.transactionHash.toString()
   }
 
-  protected async _pollForStateManagerOperation(
-    _stateManagerAddress: string,
+  protected async _pollForHubOperation(
+    _hubAddress: string,
     _eventName: EVENT_NAMES,
     _fromBlock: bigint,
     _operationId: string,
-    _pollingTime = 1000
+    _pollingTime = 1000,
   ) {
     let log: Log
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -231,7 +231,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       try {
         const logs = (await this._web3.eth.getPastLogs({
           fromBlock: _fromBlock,
-          address: _stateManagerAddress,
+          address: _hubAddress,
           topics: [eventNameToSignatureMap.get(_eventName)],
         })) as Log[]
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
@@ -244,31 +244,25 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     return log
   }
 
-  monitorCrossChainOperations(_stateManagerAddress: string, _operationId: string) {
+  monitorCrossChainOperations(_hubAddress: string, _operationId: string) {
     const promi = new PromiEvent<string>(
       (resolve, reject) =>
         (async () => {
           try {
             const fromBlock = (await this.getLatestBlockNumber()) - BigInt(BLOCK_OFFSET)
-            await this._pollForStateManagerOperation(
-              _stateManagerAddress,
-              EVENT_NAMES.OPERATION_QUEUED,
-              fromBlock,
-              _operationId
-            ).then((_log) => {
-              promi.emit('operationQueued', _log.transactionHash)
-              return _log
-            })
-            const finalTxLog = await Promise.any([
-              this._pollForStateManagerOperation(
-                _stateManagerAddress,
-                EVENT_NAMES.OPERATION_EXECUTED,
-                fromBlock,
-                _operationId
-              ).then((_log) => {
-                promi.emit('operationExecuted', _log.transactionHash)
+            await this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_QUEUED, fromBlock, _operationId).then(
+              (_log) => {
+                promi.emit('operationQueued', _log.transactionHash)
                 return _log
-              }),
+              },
+            )
+            const finalTxLog = await Promise.any([
+              this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_EXECUTED, fromBlock, _operationId).then(
+                (_log) => {
+                  promi.emit('operationExecuted', _log.transactionHash)
+                  return _log
+                },
+              ),
               // TODO: need a way to stop this polling whenever the OPERATION_EXECUTED polling resolves
               // this._pollForStateManagerOperation(
               //   _stateManagerAddress,
@@ -284,7 +278,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
           } catch (_err) {
             return reject(_err)
           }
-        })() as unknown
+        })() as unknown,
     )
     return promi
   }
