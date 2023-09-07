@@ -6,8 +6,8 @@ describe('chainIdToAddressValidatorMap', () => {
   test('Should get an address validator for every chain ID', () => {
     expect(
       Object.values(NetworkId).every(
-        (_networkId) => validators.chainIdToAddressValidatorMap.get(_networkId) !== undefined
-      )
+        (_networkId) => validators.chainIdToAddressValidatorMap.get(_networkId) !== undefined,
+      ),
     ).toBeTruthy()
   })
 })
@@ -31,14 +31,16 @@ describe('isValidAddressByChainId', () => {
     [NetworkId.GoerliTestnet, evmAddresses],
     [NetworkId.ArbitrumMainnet, evmAddresses],
     [NetworkId.GnosisMainnet, evmAddresses],
+    [NetworkId.PolygonMainnet, evmAddresses],
   ])
 
   test('Should correctly check address validity', () => {
     expect(Object.values(NetworkId).every((_networkId) => addressesToCheck.get(_networkId) !== undefined)).toBeTruthy()
-    Object.values(NetworkId).map((_networkId) =>
-      addressesToCheck
-        .get(_networkId)
-        ?.map((_a) => expect(validators.isValidAddressByChainId(_a.address, _networkId)).toBe(_a.expected))
+    Object.values(NetworkId).map(
+      (_networkId) =>
+        addressesToCheck
+          .get(_networkId)
+          ?.map((_a) => expect(validators.isValidAddressByChainId(_a.address, _networkId)).toBe(_a.expected)),
     )
   })
 })
