@@ -35,10 +35,10 @@ export class pTokensEvmAsset extends pTokensAsset {
     _amount: BigNumber,
     _destinationAddress: string,
     _destinationChainId: string,
-    _userData = '0x',
-    _optionsMask = '0x0000000000000000000000000000000000000000000000000000000000000000',
     _networkFees = BigNumber(0),
     _forwardNetworkFees = BigNumber(0),
+    _optionsMask = '0x0000000000000000000000000000000000000000000000000000000000000000',
+    _userData = '0x',
   ): PromiEvent<SwapResult> {
     const promi = new PromiEvent<SwapResult>(
       (resolve, reject) =>
@@ -56,9 +56,9 @@ export class pTokensEvmAsset extends pTokensAsset {
               this.assetInfo.assetTokenAddress, // assetTokenAddress
               onChainFormat(_amount, this.assetInfo.decimals).toString(), // assetAmount
               ZERO_ADDRESS, // protocolFeeAssetTokenAddress
-              0, // protocolFeeAssetAmount
-              _networkFees, // networkFeeAssetAmount
-              _forwardNetworkFees, // forwardNetworkFeeAssetAmount
+              BigNumber(0).toString(), // protocolFeeAssetAmount
+              _networkFees.toString(), // networkFeeAssetAmount
+              _forwardNetworkFees.toString(), // forwardNetworkFeeAssetAmount
               _userData, // userData
               _optionsMask,
             ]

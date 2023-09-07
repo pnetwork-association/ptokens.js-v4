@@ -48,7 +48,8 @@ describe('ethereum utilities', () => {
   })
 
   test('Should return a valid Web3.eth.Contract instance', () => {
-    const contract = utils.getContract(abi, TEST_CONTRACT_ADDRESS)
+    const web3 = new Web3()
+    const contract = utils.getContract(web3, abi, TEST_CONTRACT_ADDRESS)
     expect(contract.defaultAccount).toStrictEqual(undefined)
     expect(Object.keys(contract.methods)).toStrictEqual([
       'setNumber',
@@ -62,7 +63,8 @@ describe('ethereum utilities', () => {
   })
 
   test('Should return a valid Web3.eth.Contract instance with default account', () => {
-    const contract = utils.getContract(abi, TEST_CONTRACT_ADDRESS, 'account')
+    const web3 = new Web3()
+    const contract = utils.getContract(web3, abi, TEST_CONTRACT_ADDRESS, 'account')
     expect(contract.defaultAccount).toStrictEqual('account')
     expect(Object.keys(contract.methods)).toStrictEqual([
       'setNumber',
@@ -97,10 +99,10 @@ describe('ethereum utilities', () => {
 
   test('Should get operation ID from log', async () => {
     const res = await Promise.allSettled(
-      logs.map((_log) => new Promise((_resolve) => _resolve(utils.getOperationIdFromLog(_log))))
+      logs.map((_log) => new Promise((_resolve) => _resolve(utils.getOperationIdFromLog(_log)))),
     )
     expect(
-      res.map((_obj) => ('value' in _obj ? _obj.value : 'reason' in _obj ? (_obj.reason.message as string) : null))
+      res.map((_obj) => ('value' in _obj ? _obj.value : 'reason' in _obj ? (_obj.reason.message as string) : null)),
     ).toStrictEqual([
       '0x803407fd9fda34dc0f3f4b479baf6d7a2fc1ba3992696563da8cc9993c3e79cc',
       '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',

@@ -86,7 +86,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve(123456)
-        })
+        }),
       )
       return promi
     })
@@ -100,11 +100,11 @@ describe('EVM provider', () => {
         abi,
         contractAddress: 'contract-address',
       },
-      [1, 'arg2', 'arg3']
+      [1, 'arg2', 'arg3'],
     )
     expect(res).toEqual(123456)
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(callMock).toHaveBeenNthCalledWith(1)
   })
@@ -122,7 +122,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve(123456)
-        })
+        }),
       )
       return promi
     })
@@ -136,11 +136,11 @@ describe('EVM provider', () => {
         abi,
         contractAddress: 'contract-address',
       },
-      []
+      [],
     )
     expect(res).toEqual(123456)
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(numberMock).toHaveBeenNthCalledWith(1)
     expect(callMock).toHaveBeenNthCalledWith(1)
   })
@@ -158,7 +158,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve({ transactionHash: 'tx-hash' })
-        })
+        }),
       )
       return promi
     })
@@ -176,7 +176,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -188,7 +188,7 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
   })
@@ -206,7 +206,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve({ transactionHash: 'tx-hash' })
-        })
+        }),
       )
       return promi
     })
@@ -233,7 +233,7 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(numberMock).toHaveBeenNthCalledWith(1)
     expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
   })
@@ -253,7 +253,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve({ transactionHash: 'tx-hash' })
-        })
+        }),
       )
       return promi
     })
@@ -271,7 +271,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -283,7 +283,7 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(
       1,
@@ -292,7 +292,7 @@ describe('EVM provider', () => {
         value: '1',
         gas: '200000',
         gasPrice: '100000000000',
-      })
+      }),
     )
   })
 
@@ -310,7 +310,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve({ transactionHash: 'tx-hash' })
-        })
+        }),
       )
       return promi
     })
@@ -328,7 +328,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -340,11 +340,11 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ from: 'evm-account', value: '1', gasPrice: '100000000000' })
+      expect.objectContaining({ from: 'evm-account', value: '1', gasPrice: '100000000000' }),
     )
   })
 
@@ -362,7 +362,7 @@ describe('EVM provider', () => {
           promi.emit('transactionHash', 'tx-hash')
           promi.emit('receipt', { transactionHash: 'tx-hash' })
           return resolve({ transactionHash: 'tx-hash' })
-        })
+        }),
       )
       return promi
     })
@@ -380,7 +380,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -392,11 +392,11 @@ describe('EVM provider', () => {
     expect(txBroadcastedHash).toEqual('tx-hash')
     expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ from: 'evm-account', value: '1', gas: '200000' })
+      expect.objectContaining({ from: 'evm-account', value: '1', gas: '200000' }),
     )
   })
 
@@ -412,7 +412,7 @@ describe('EVM provider', () => {
         setImmediate(() => {
           promi.emit('error', new Error('tx-error'))
           return resolve({ transactionHash: 'tx-hash' })
-        })
+        }),
       )
       return promi
     })
@@ -429,7 +429,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       .once('txError', (_error) => {
         txError = _error
@@ -437,7 +437,7 @@ describe('EVM provider', () => {
     expect(txHash).toEqual({ transactionHash: 'tx-hash' })
     expect(txError.message).toStrictEqual('tx-error')
     expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, abi, 'contract-address', 'evm-account')
+    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
     expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
     expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
   })
@@ -455,7 +455,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       fail()
     } catch (err) {
@@ -480,7 +480,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       fail()
     } catch (err) {
@@ -513,7 +513,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3']
+        [1, 'arg2', 'arg3'],
       )
       fail()
     } catch (err) {
@@ -530,7 +530,7 @@ describe('EVM provider', () => {
       .mockResolvedValue(receiptWithTrueStatus as TransactionReceipt)
     const ret = await provider.waitForTransactionConfirmation(
       '0x5d65fa769234d6eef32baaeeb267dd1b3b8e0ff2e04a0861e2d36af26d631046',
-      500
+      500,
     )
     expect(waitForConfirmationSpy).toHaveBeenCalledTimes(3)
     expect(ret).toBe('0x5d65fa769234d6eef32baaeeb267dd1b3b8e0ff2e04a0861e2d36af26d631046')
@@ -553,7 +553,7 @@ describe('EVM provider', () => {
     const ret = await provider
       .monitorCrossChainOperations(
         '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-        '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986'
+        '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
       )
       .on('operationQueued', (_obj) => {
         operationQueuedObject = _obj
@@ -597,7 +597,7 @@ describe('EVM provider', () => {
     try {
       await provider.monitorCrossChainOperations(
         '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-        '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986'
+        '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
       )
       fail()
     } catch (err) {

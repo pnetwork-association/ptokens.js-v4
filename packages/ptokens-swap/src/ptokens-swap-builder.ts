@@ -40,8 +40,8 @@ export class pTokensSwapBuilder {
    * @param _id - A network ID
    * @returns The same builder. This allows methods chaining.
    */
-  setNetworkFees(_amount: BigNumber) {
-    this._networkFees = _amount
+  setNetworkFees(_amount: BigNumber.Value) {
+    this._networkFees = BigNumber(_amount)
     return this
   }
 
@@ -57,8 +57,8 @@ export class pTokensSwapBuilder {
    * @param _id - A network ID
    * @returns The same builder. This allows methods chaining.
    */
-  setForwardNetworkFees(_amount: BigNumber) {
-    this._forwardNetworkFees = _amount
+  setForwardNetworkFees(_amount: BigNumber.Value) {
+    this._forwardNetworkFees = BigNumber(_amount)
     return this
   }
 

@@ -18,6 +18,7 @@ describe('pTokensSwap', () => {
         networkId: NetworkId.SepoliaTestnet,
         symbol: 'SOURCE',
         assetTokenAddress: 'token-contract-address',
+        decimals: 6,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
         underlyingAssetSymbol: 'SYM',
@@ -25,8 +26,7 @@ describe('pTokensSwap', () => {
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
       factoryAddress: 'factory-address',
-      routerAddress: 'router-address',
-      stateManagerAddress: 'state-manager-address',
+      hubAddress: 'hub-address',
     })
     const assetProvider = new pTokensProviderMock()
     const destinationAsset = new pTokenAssetMock({
@@ -34,6 +34,7 @@ describe('pTokensSwap', () => {
         networkId: NetworkId.GoerliTestnet,
         symbol: 'DESTINATION',
         assetTokenAddress: 'token-contract-address',
+        decimals: 6,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
         underlyingAssetSymbol: 'SYM',
@@ -41,15 +42,21 @@ describe('pTokensSwap', () => {
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
       factoryAddress: 'factory-address',
-      routerAddress: 'router-address',
-      stateManagerAddress: 'state-manager-address',
+      hubAddress: 'hub-address',
       provider: assetProvider,
     })
     const swapSpy = jest.spyOn(sourceAsset, 'swap')
     const swap = new pTokensSwap(
       sourceAsset,
-      [{ asset: destinationAsset, destinationAddress: 'destination-address' }],
-      BigNumber(10)
+      [
+        {
+          asset: destinationAsset,
+          destinationAddress: 'destination-address',
+          networkFees: BigNumber(1e18),
+          forwardNetworkFees: BigNumber(2e18),
+        },
+      ],
+      BigNumber(10),
     )
     const promi = swap.execute()
     let inputTxBroadcasted = false,
@@ -79,8 +86,10 @@ describe('pTokensSwap', () => {
       BigNumber(10),
       'destination-address',
       NetworkId.GoerliTestnet,
+      BigNumber(1e18),
+      BigNumber(2e18),
+      '0x0000000000000000000000000000000000000000000000000000000000000000',
       undefined,
-      '0x0000000000000000000000000000000000000000000000000000000000000000'
     )
     expect(inputTxBroadcasted).toBeTruthy()
     expect(inputTxBroadcastedObj).toStrictEqual({ txHash: 'originating-tx-hash' })
@@ -100,6 +109,7 @@ describe('pTokensSwap', () => {
         networkId: NetworkId.SepoliaTestnet,
         symbol: 'SOURCE',
         assetTokenAddress: 'token-contract-address',
+        decimals: 6,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
         underlyingAssetSymbol: 'SYM',
@@ -107,8 +117,7 @@ describe('pTokensSwap', () => {
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
       factoryAddress: 'factory-address',
-      routerAddress: 'router-address',
-      stateManagerAddress: 'state-manager-address',
+      hubAddress: 'hub-address',
     })
     const assetProvider = new pTokensProviderMock()
     const destinationAsset = new pTokenAssetMock({
@@ -116,6 +125,7 @@ describe('pTokensSwap', () => {
         networkId: NetworkId.GoerliTestnet,
         symbol: 'DESTINATION',
         assetTokenAddress: 'token-contract-address',
+        decimals: 6,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
         underlyingAssetSymbol: 'SYM',
@@ -123,8 +133,7 @@ describe('pTokensSwap', () => {
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
       factoryAddress: 'factory-address',
-      routerAddress: 'router-address',
-      stateManagerAddress: 'state-manager-address',
+      hubAddress: 'hub-address',
       provider: assetProvider,
     })
     const swapSpy = jest.spyOn(sourceAsset, 'swap')
@@ -134,7 +143,7 @@ describe('pTokensSwap', () => {
       .addDestinationAsset(
         destinationAsset,
         '0x28B2A40b6046850a569843cF740f15CF29792Ac2',
-        Buffer.from('user-data').toString('hex')
+        Buffer.from('user-data').toString('hex'),
       )
     const swap = builder.build()
     const promi = swap.execute()
@@ -165,8 +174,10 @@ describe('pTokensSwap', () => {
       BigNumber(123.456),
       '0x28B2A40b6046850a569843cF740f15CF29792Ac2',
       NetworkId.GoerliTestnet,
+      BigNumber(0),
+      BigNumber(0),
+      '0x0000000000000000000000000000000000000000000000000000000000000000',
       '757365722d64617461',
-      '0x0000000000000000000000000000000000000000000000000000000000000000'
     )
     expect(inputTxBroadcasted).toBeTruthy()
     expect(inputTxBroadcastedObj).toStrictEqual({ txHash: 'originating-tx-hash' })
@@ -187,6 +198,7 @@ describe('pTokensSwap', () => {
         networkId: NetworkId.SepoliaTestnet,
         symbol: 'SRC',
         assetTokenAddress: 'token-contract-address',
+        decimals: 6,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
         underlyingAssetSymbol: 'SYM',
@@ -194,8 +206,7 @@ describe('pTokensSwap', () => {
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
       factoryAddress: 'factory-address',
-      routerAddress: 'router-address',
-      stateManagerAddress: 'state-manager-address',
+      hubAddress: 'hub-address',
       provider: sourceAssetProvider,
     })
     const destinationAssetProvider = new pTokensProviderMock()
@@ -204,6 +215,7 @@ describe('pTokensSwap', () => {
         networkId: NetworkId.GoerliTestnet,
         symbol: 'DST',
         assetTokenAddress: 'token-contract-address',
+        decimals: 6,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
         underlyingAssetSymbol: 'SYM',
@@ -211,8 +223,7 @@ describe('pTokensSwap', () => {
         underlyingAssetTokenAddress: 'underlying-asset-token-address',
       },
       factoryAddress: 'factory-address',
-      routerAddress: 'router-address',
-      stateManagerAddress: 'state-manager-address',
+      hubAddress: 'hub-address',
       provider: destinationAssetProvider,
     })
     const swapSpy = jest.spyOn(sourceAsset, 'swap')
@@ -220,10 +231,12 @@ describe('pTokensSwap', () => {
     builder
       .setAmount(123.456)
       .setSourceAsset(sourceAsset)
+      .setNetworkFees(1e9)
+      .setForwardNetworkFees(2e9)
       .addDestinationAsset(
         destinationAsset,
         '0xE37c0D48d68da5c5b14E5c1a9f1CFE802776D9FF',
-        Buffer.from('user-data').toString('hex')
+        Buffer.from('user-data').toString('hex'),
       )
     const swap = builder.build()
     try {
@@ -235,8 +248,10 @@ describe('pTokensSwap', () => {
         BigNumber(123.456),
         '0xE37c0D48d68da5c5b14E5c1a9f1CFE802776D9FF',
         NetworkId.GoerliTestnet,
+        BigNumber(1e9),
+        BigNumber(2e9),
+        '0x0000000000000000000000000000000000000000000000000000000000000000',
         '757365722d64617461',
-        '0x0000000000000000000000000000000000000000000000000000000000000000'
       )
       expect(waitForTransactionConfirmationSpy).toHaveBeenCalledTimes(0)
     }

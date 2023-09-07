@@ -22,28 +22,19 @@ describe('EVM asset', () => {
       underlyingAssetTokenAddress: 'underlying-asset-token-address',
     }
     const provider = new pTokensEvmProvider('http://provider.eth')
-    const makeContractCallSpy = jest
-      .spyOn(provider, 'makeContractCall')
-      .mockResolvedValueOnce('router-address')
-      .mockResolvedValueOnce('state-manager-address')
+    const makeContractCallSpy = jest.spyOn(provider, 'makeContractCall').mockResolvedValueOnce('hub-address')
     const builder = new pTokensEvmAssetBuilder(provider)
     builder.setBlockchain(NetworkId.ArbitrumMainnet)
     builder.setAssetInfo(assetInfo)
     builder.setProvider(provider)
     const asset = await builder.build()
-    expect(makeContractCallSpy).toHaveBeenCalledTimes(2)
+    expect(makeContractCallSpy).toHaveBeenCalledTimes(1)
     expect(makeContractCallSpy).toHaveBeenNthCalledWith(1, {
       abi: ABI,
-      method: 'router',
-      contractAddress: '0x42807B8Bbb9A345E0B8333bc8f0F7e946b724C64',
+      method: 'hub',
+      contractAddress: '0xcf9De65e9bB5F7fE8643dA066aB6cBC691De0Fe7',
     })
-    expect(makeContractCallSpy).toHaveBeenNthCalledWith(2, {
-      abi: ABI,
-      method: 'stateManager',
-      contractAddress: '0x42807B8Bbb9A345E0B8333bc8f0F7e946b724C64',
-    })
-    expect(asset.stateManagerAddress).toStrictEqual('state-manager-address')
-    expect(asset.routerAddress).toStrictEqual('router-address')
+    expect(asset.hubAddress).toStrictEqual('hub-address')
     expect(asset.blockchain).toStrictEqual(Blockchain.Arbitrum)
     expect(asset.network).toStrictEqual(Network.Mainnet)
     expect(asset.networkId).toStrictEqual(NetworkId.ArbitrumMainnet)

@@ -126,12 +126,12 @@ export class pTokensSwap {
               this._amount,
               this._destinationAssets[0].destinationAddress,
               this._destinationAssets[0].asset.networkId,
-              this._destinationAssets[0].userData,
+              this._destinationAssets[0].networkFees,
+              this._destinationAssets[0].forwardNetworkFees,
               this._destinationAssets[0].toNative
                 ? '0x0000000000000000000000000000000000000000000000000000000000000001'
                 : '0x0000000000000000000000000000000000000000000000000000000000000000',
-              this._destinationAssets[0].networkFees,
-              this._destinationAssets[0].forwardNetworkFees,
+              this._destinationAssets[0].userData,
             )
               .on('txBroadcasted', (_swapResult: SwapResult) => {
                 promi.emit('inputTxBroadcasted', { txHash: _swapResult.txHash })

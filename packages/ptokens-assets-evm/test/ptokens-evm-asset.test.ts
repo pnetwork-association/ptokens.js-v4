@@ -4,7 +4,7 @@ import { Blockchain, NetworkId, Network } from 'ptokens-constants'
 import { TransactionReceipt } from 'web3-types'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
-import pRouterAbi from '../src/abi/PRouterAbi'
+import pNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 
 import receipt from './utils/receiptUserSend.json'
 
@@ -28,8 +28,7 @@ describe('EVM asset', () => {
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
         factoryAddress: 'factory-address',
-        routerAddress: 'router-address',
-        stateManagerAddress: 'state-manager-address',
+        hubAddress: 'hub-address',
       })
       expect(asset.symbol).toStrictEqual('pSYM')
       expect(asset.blockchain).toStrictEqual(Blockchain.Sepolia)
@@ -58,8 +57,7 @@ describe('EVM asset', () => {
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
         factoryAddress: 'factory-address',
-        routerAddress: 'router-address',
-        stateManagerAddress: 'state-manager-address',
+        hubAddress: 'hub-address',
       })
       try {
         await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
@@ -79,7 +77,7 @@ describe('EVM asset', () => {
             promi.emit('txBroadcasted', 'tx-hash')
             promi.emit('txConfirmed', receipt)
             return resolve(receipt as unknown as TransactionReceipt)
-          })
+          }),
         )
         return promi
       })
@@ -97,8 +95,7 @@ describe('EVM asset', () => {
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
         factoryAddress: 'factory-address',
-        routerAddress: 'router-address',
-        stateManagerAddress: 'state-manager-address',
+        hubAddress: 'hub-address',
       })
       let txHashBroadcasted = ''
       let swapResultConfirmed = null
@@ -121,8 +118,8 @@ describe('EVM asset', () => {
       expect(makeContractSendSpy).toHaveBeenNthCalledWith(
         1,
         {
-          abi: pRouterAbi,
-          contractAddress: 'router-address',
+          abi: pNetworkHubAbi,
+          contractAddress: 'hub-address',
           method: 'userSend',
           value: '0',
         },
@@ -136,9 +133,13 @@ describe('EVM asset', () => {
           'underlying-asset-network-id',
           'asset-token-address',
           '123456789000000000000',
+          '0x0000000000000000000000000000000000000000',
+          '0',
+          '0',
+          '0',
           '0x',
           '0x0000000000000000000000000000000000000000000000000000000000000000',
-        ]
+        ],
       )
     })
 
@@ -164,8 +165,7 @@ describe('EVM asset', () => {
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
         },
         factoryAddress: 'factory-address',
-        routerAddress: 'router-address',
-        stateManagerAddress: 'state-manager-address',
+        hubAddress: 'hub-address',
       })
       try {
         await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
@@ -199,8 +199,7 @@ describe('EVM asset', () => {
             underlyingAssetTokenAddress: 'underlying-asset-token-address',
           },
           factoryAddress: 'factory-address',
-          routerAddress: 'router-address',
-          stateManagerAddress: 'state-manager-address',
+          hubAddress: 'hub-address',
         })
         const ret = await asset['monitorCrossChainOperations']('operation-id')
         expect(ret).toStrictEqual('tx-hash')

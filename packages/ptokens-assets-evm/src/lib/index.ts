@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js'
 import { NetworkId } from 'ptokens-constants'
-import { Web3, Log, TransactionReceipt, Contract } from 'web3'
+import { Web3, Log, TransactionReceipt } from 'web3'
 import { encodeEventSignature, decodeLog, encodeParameters } from 'web3-eth-abi'
 import { AbiEventFragment, ContractAbi } from 'web3-types'
 import { keccak256 } from 'web3-utils'
