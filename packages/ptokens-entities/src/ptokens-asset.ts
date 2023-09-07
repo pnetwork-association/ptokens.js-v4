@@ -91,10 +91,12 @@ export abstract class pTokensAsset {
     this._hubAddress = _config.hubAddress
   }
 
+  /** Return the pTokensFactory's address. */
   get factoryAddress(): string {
     return this._factoryAddress
   }
 
+  /** Return the pNetworkHub's address. */
   get hubAddress(): string {
     return this._hubAddress
   }

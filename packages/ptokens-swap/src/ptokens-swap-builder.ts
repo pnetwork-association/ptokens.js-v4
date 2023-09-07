@@ -29,15 +29,15 @@ export class pTokensSwapBuilder {
   }
 
   /**
-   * Return the interim chain network ID to be used for the swap
+   * Return the network fees absolute amount
    */
   get networkFees() {
     return this._networkFees || BigNumber(0)
   }
 
   /**
-   * Set the interim chain network ID
-   * @param _id - A network ID
+   * Set network fees absolute amount - withdrawal takes place in the interim chain
+   * @param _amount - The absolute amount of fees willing to pay to relayers in the interim chain
    * @returns The same builder. This allows methods chaining.
    */
   setNetworkFees(_amount: BigNumber.Value) {
@@ -46,15 +46,15 @@ export class pTokensSwapBuilder {
   }
 
   /**
-   * Return the interim chain network ID to be used for the swap
+   * Return the forward network fees absolute amount
    */
   get forwardNetworkFees() {
     return this._forwardNetworkFees || BigNumber(0)
   }
 
   /**
-   * Set the interim chain network ID
-   * @param _id - A network ID
+   * Set forward network fees absolute amount - withdrawal takes place in the final chain
+   * @param _amount - The absolute amount of fees willing to pay to relayers in the final chain
    * @returns The same builder. This allows methods chaining.
    */
   setForwardNetworkFees(_amount: BigNumber.Value) {
@@ -75,6 +75,9 @@ export class pTokensSwapBuilder {
    * @param _asset - A pTokenAsset that will be one of the destination assets.
    * @param _destinationAddress - The destination address that will receive the _asset.
    * @param _userData - Optional user data.
+   * @param _toNative - Optional flag to specify if the destination asset is the native one.
+   * @param _networkFees - Optional interim chain network fees for this specific destination.
+   * @param _forwardNetworkFees - Optional final chain network fees for this specific destination.
    * @returns The same builder. This allows methods chaining.
    */
   addDestinationAsset(
@@ -82,8 +85,8 @@ export class pTokensSwapBuilder {
     _destinationAddress: string,
     _userData = '0x',
     _toNative = false,
-    _forwardNetworkFees?: BigNumber,
     _networkFees?: BigNumber,
+    _forwardNetworkFees?: BigNumber,
   ) {
     const isValidAddressFunction = validators.chainIdToAddressValidatorMap.get(_asset.networkId)
     if (!isValidAddressFunction(_destinationAddress)) throw new Error('Invalid destination address')
