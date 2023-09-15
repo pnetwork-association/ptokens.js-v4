@@ -47,7 +47,7 @@ export type AssetInfo = {
   /** Asset symbol */
   symbol: string
   /** Token smart contract address. */
-  assetTokenAddress: string
+  assetTokenAddress?: string
   /** Token's decimals. */
   decimals: number
   /** pNetwork enclave address. */

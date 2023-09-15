@@ -3,8 +3,6 @@ import PromiEvent from 'promievent'
 import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 
-// import receipt from '../test/utils/receiptUserSend.json'
-
 import pNetworkHubAbi from './abi/PNetworkHubAbi'
 import { ZERO_ADDRESS, getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
