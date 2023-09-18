@@ -4,6 +4,7 @@ import { Blockchain, NetworkId, Network } from 'ptokens-constants'
 import { TransactionReceipt } from 'web3-types'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
+import pFactoryAbi from '../src/abi/PFactoryAbi'
 import pNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 
 import receipt from './utils/receiptUserSend.json'
@@ -174,37 +175,37 @@ describe('EVM asset', () => {
         expect(err.message).toStrictEqual('makeContractSend error')
       }
     })
+  })
 
-    describe('monitorCrossChainOperations', () => {
-      beforeEach(() => {
-        jest.restoreAllMocks()
-      })
+  describe('monitorCrossChainOperations', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks()
+    })
 
-      test('Should call provider monitorCrossChainOperations', async () => {
-        const provider = new pTokensEvmProvider('http://provider.eth')
-        const monitorCrossChainOperationsSpy = jest
-          .spyOn(provider, 'monitorCrossChainOperations')
-          .mockResolvedValue('tx-hash')
-        const asset = new pTokensEvmAsset({
-          provider: provider,
-          assetInfo: {
-            networkId: NetworkId.SepoliaTestnet,
-            symbol: 'pSYM',
-            assetTokenAddress: 'asset-token-address',
-            decimals: 18,
-            underlyingAssetDecimals: 18,
-            underlyingAssetNetworkId: 'underlying-asset-network-id',
-            underlyingAssetSymbol: 'underlying-asset-symbol',
-            underlyingAssetName: 'underlying-asset-name',
-            underlyingAssetTokenAddress: 'underlying-asset-token-address',
-          },
-          factoryAddress: 'factory-address',
-          hubAddress: 'hub-address',
-        })
-        const ret = await asset['monitorCrossChainOperations']('operation-id')
-        expect(ret).toStrictEqual('tx-hash')
-        expect(monitorCrossChainOperationsSpy).toHaveBeenCalledTimes(1)
+    test('Should call provider monitorCrossChainOperations', async () => {
+      const provider = new pTokensEvmProvider('http://provider.eth')
+      const monitorCrossChainOperationsSpy = jest
+        .spyOn(provider, 'monitorCrossChainOperations')
+        .mockResolvedValue('tx-hash')
+      const asset = new pTokensEvmAsset({
+        provider: provider,
+        assetInfo: {
+          networkId: NetworkId.SepoliaTestnet,
+          symbol: 'pSYM',
+          assetTokenAddress: 'asset-token-address',
+          decimals: 18,
+          underlyingAssetDecimals: 18,
+          underlyingAssetNetworkId: 'underlying-asset-network-id',
+          underlyingAssetSymbol: 'underlying-asset-symbol',
+          underlyingAssetName: 'underlying-asset-name',
+          underlyingAssetTokenAddress: 'underlying-asset-token-address',
+        },
+        factoryAddress: 'factory-address',
+        hubAddress: 'hub-address',
       })
+      const ret = await asset['monitorCrossChainOperations']('operation-id')
+      expect(ret).toStrictEqual('tx-hash')
+      expect(monitorCrossChainOperationsSpy).toHaveBeenCalledTimes(1)
     })
   })
 })
