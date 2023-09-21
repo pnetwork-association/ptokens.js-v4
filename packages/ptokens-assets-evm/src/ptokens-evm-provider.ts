@@ -2,18 +2,9 @@ import polling from 'light-async-polling'
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
-import {
-  DEFAULT_RETURN_FORMAT,
-  Web3,
-  TransactionReceipt,
-  Log,
-  ContractAbi,
-  SupportedProviders,
-  EthExecutionAPI,
-} from 'web3'
-import { SendTransactionEvents } from 'web3/lib/commonjs/eth.exports'
-import { Web3PromiEvent } from 'web3-core'
-import { PayableTxOptions } from 'web3-eth-contract'
+import { Abi, PublicClient, WalletClient, TransactionReceipt } from 'viem'
+import factoryAbi from './abi/PFactoryAbi'
+// import { privateKeyToAccount } from 'viem/accounts'
 
 import { EVENT_NAMES, eventNameToSignatureMap, getAccount, getContract, getOperationIdFromLog } from './lib/'
 
@@ -23,7 +14,7 @@ export type MakeContractSendOptions = {
   /** The method to be called. */
   method: string
   /** The contract ABI. */
-  abi: ContractAbi
+  abi: Abi
   /** The contract address. */
   contractAddress: string
   /** The value being sent with the transaction. */
@@ -36,32 +27,36 @@ export type MakeContractCallOptions = {
   /** The method to be called. */
   method: string
   /** The contract ABI. */
-  abi: ContractAbi
+  abi: Abi
   /** The contract address. */
   contractAddress: string
 }
 
-class SendOptions implements PayableTxOptions {
-  from: string
-  value: string
-  gasPrice: string
-  gas: string
-  constructor(from: string, value: string) {
-    this.from = from
-    this.value = value
-  }
-  maybeSetGasPrice(gasPrice: number) {
-    if (gasPrice) this.gasPrice = gasPrice.toString()
-    return this
-  }
-  maybeSetGasLimit(gasLimit: number) {
-    if (gasLimit) this.gas = gasLimit.toString()
-    return this
-  }
-}
+// class SendObject<T> {
+//   account: `0x${string}`
+//   address: `0x${string}`
+//   abi: Abi
+//   functionName: string
+//   value: string
+//   gasPrice: string
+//   gas: string
+//   args: [] | T
+//   constructor(value: string) {
+//     this.value = value
+//   }
+//   maybeSetGasPrice(account: `0x${string}`, address:`0x${string}`, gasPrice: number) {
+//     if (gasPrice) this.gasPrice = gasPrice.toString()
+//     return this
+//   }
+//   maybeSetGasLimit(gasLimit: number) {
+//     if (gasLimit) this.gas = gasLimit.toString()
+//     return this
+//   }
+// }
 
 export class pTokensEvmProvider implements pTokensAssetProvider {
-  private _web3: Web3
+  private _publicClient: PublicClient
+  private _walletClient: WalletClient
   private _gasPrice: number
   private _gasLimit: number
 
@@ -69,8 +64,9 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * Create and initialize a pTokensEvmProvider object.
    * @param _provider - A web3.js provider (refer to https://web3js.readthedocs.io/en/v1.8.0/web3.html#setprovider).
    */
-  constructor(_provider: string | SupportedProviders<EthExecutionAPI>) {
-    this._web3 = new Web3(_provider)
+  constructor(_publicClient: PublicClient, _walletClient: WalletClient) {
+    this._publicClient = _publicClient
+    this._walletClient = _walletClient
   }
 
   /**
@@ -119,19 +115,17 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @returns The same provider. This allows methods chaining.
    */
   setPrivateKey(_key: string) {
-    const account = this._web3.eth.accounts.privateKeyToAccount(stringUtils.addHexPrefix(_key))
-    this._web3.eth.accounts.wallet.add(account)
-    this._web3.eth.defaultAccount = account.address
+    // TODO
     return this
   }
 
   async getLatestBlockNumber() {
-    const block = await this._web3.eth.getBlock('latest')
+    const block = await this._publicClient.getBlock({ blockTag: 'latest'})
     return block.number
   }
 
   async getTransactionReceipt(_hash: string) {
-    const receipt = await this._web3.eth.getTransactionReceipt(_hash)
+    const receipt = await this._publicClient.getTransactionReceipt({ hash: stringUtils.addHexPrefix(_hash)})
     return receipt
   }
 
@@ -147,6 +141,49 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _args - The arguments to be passed to the contract method being called.
    * @returns A PromiEvent that resolves with the hash of the resulting transaction.
    */
+  amakeContractSend<T extends unknown[] = []>(_options: MakeContractSendOptions, _args: T | [] = []) {
+    const promi = new PromiEvent<TransactionReceipt>(
+      (resolve, reject) =>
+        (async () => {
+          try {
+            const { method, abi, contractAddress, value, gasLimit } = _options
+            const [account] = await this._walletClient.getAddresses()
+            const { request } = await this._publicClient.simulateContract({
+              account,
+              address: stringUtils.addHexPrefix(contractAddress) as `0x${string}`,
+              abi: abi,
+              functionName: method,
+              value: value,
+              args: _args,
+              gas: (gasLimit || this.gasLimit) ? (gasLimit || this.gasLimit) : undefined,
+              gasPrice: this.gasPrice ? this.gasPrice : undefined
+            })
+            // const { request } = await this._publicClient.simulateContract({
+            //   address: '0x1122559c96811F4934660e01A916A7883Ab8ac0D',
+            //   abi: factoryAbi,
+            //   functionName: 'getPTokenAddress',
+            //   account: '0xa41657bf225F8Ec7E2010C89c3F084172948264D',
+            //   args: [
+            //     'USD//C on xDai',
+            //     'USDC',
+            //     6n,
+            //     '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83',
+            //     '0xd41b1c5b',
+            //   ]
+            // })
+            const txHash = await this._walletClient.writeContract(request)
+            promi.emit('txBroadcasted', txHash)
+            const txReceipt = await this._publicClient.waitForTransactionReceipt({ hash: txHash })
+            promi.emit('txConfirmed', txReceipt)
+            return resolve(txReceipt)
+          } catch (_err) {
+            promi.emit('txError', _err)
+            return reject(_err)
+          }
+        })() as unknown,
+    )
+    return promi
+  }
   makeContractSend<T extends unknown[] = []>(_options: MakeContractSendOptions, _args: T | [] = []) {
     const promi = new PromiEvent<TransactionReceipt>(
       (resolve, reject) =>
