@@ -3,10 +3,10 @@ import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
 import { Abi, PublicClient, WalletClient, TransactionReceipt } from 'viem'
-import factoryAbi from './abi/PFactoryAbi'
+import events from './abi/events'
 // import { privateKeyToAccount } from 'viem/accounts'
 
-import { EVENT_NAMES, eventNameToSignatureMap, getAccount, getContract, getOperationIdFromLog } from './lib/'
+import { EVENT_NAMES, getOperationIdFromLog } from './lib/'
 
 const BLOCK_OFFSET = 1000
 
@@ -141,7 +141,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _args - The arguments to be passed to the contract method being called.
    * @returns A PromiEvent that resolves with the hash of the resulting transaction.
    */
-  amakeContractSend<T extends unknown[] = []>(_options: MakeContractSendOptions, _args: T | [] = []) {
+  makeContractSend<T extends unknown[] = []>(_options: MakeContractSendOptions, _args: T | [] = []) {
     const promi = new PromiEvent<TransactionReceipt>(
       (resolve, reject) =>
         (async () => {
@@ -150,7 +150,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
             const [account] = await this._walletClient.getAddresses()
             const { request } = await this._publicClient.simulateContract({
               account,
-              address: stringUtils.addHexPrefix(contractAddress) as `0x${string}`,
+              address: stringUtils.addHexPrefix(contractAddress),
               abi: abi,
               functionName: method,
               value: value,
@@ -158,62 +158,13 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               gas: (gasLimit || this.gasLimit) ? (gasLimit || this.gasLimit) : undefined,
               gasPrice: this.gasPrice ? this.gasPrice : undefined
             })
-            // const { request } = await this._publicClient.simulateContract({
-            //   address: '0x1122559c96811F4934660e01A916A7883Ab8ac0D',
-            //   abi: factoryAbi,
-            //   functionName: 'getPTokenAddress',
-            //   account: '0xa41657bf225F8Ec7E2010C89c3F084172948264D',
-            //   args: [
-            //     'USD//C on xDai',
-            //     'USDC',
-            //     6n,
-            //     '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83',
-            //     '0xd41b1c5b',
-            //   ]
-            // })
-            const txHash = await this._walletClient.writeContract(request)
+            const txHash = await this._walletClient.writeContract(request as any)
             promi.emit('txBroadcasted', txHash)
             const txReceipt = await this._publicClient.waitForTransactionReceipt({ hash: txHash })
             promi.emit('txConfirmed', txReceipt)
             return resolve(txReceipt)
           } catch (_err) {
             promi.emit('txError', _err)
-            return reject(_err)
-          }
-        })() as unknown,
-    )
-    return promi
-  }
-  makeContractSend<T extends unknown[] = []>(_options: MakeContractSendOptions, _args: T | [] = []) {
-    const promi = new PromiEvent<TransactionReceipt>(
-      (resolve, reject) =>
-        (async () => {
-          try {
-            const { method, abi, contractAddress, value, gasLimit } = _options
-            const account = await getAccount(this._web3)
-            const contract = getContract(this._web3, abi, contractAddress, account)
-            const b = contract.methods[method] as (...args: T | []) => {
-              send: (
-                opts?: PayableTxOptions,
-              ) => Web3PromiEvent<TransactionReceipt, SendTransactionEvents<typeof DEFAULT_RETURN_FORMAT>>
-            }
-            const receipt = b(..._args)
-              .send(
-                new SendOptions(account, value)
-                  .maybeSetGasLimit(gasLimit || this.gasLimit)
-                  .maybeSetGasPrice(this.gasPrice),
-              )
-              .once('transactionHash', (_hash) => {
-                promi.emit('txBroadcasted', _hash)
-              })
-              .once('receipt', (_receipt) => {
-                promi.emit('txConfirmed', _receipt)
-              })
-              .once('error', (_error) => {
-                promi.emit('txError', _error)
-              })
-            return resolve(receipt)
-          } catch (_err) {
             return reject(_err)
           }
         })() as unknown,
@@ -233,10 +184,12 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     _args: T | [] = [],
   ): Promise<R> {
     const { method, abi, contractAddress } = _options
-    const account = await getAccount(this._web3)
-    const contract = getContract(this._web3, abi, contractAddress, account)
-    const b = contract.methods[method] as (...args: T | []) => { call: () => Promise<R> }
-    return b(..._args).call()
+    return this._publicClient.readContract({
+      address: stringUtils.addHexPrefix(contractAddress),
+      abi: abi,
+      functionName: method,
+      args: _args
+    }) as Promise<R>
   }
 
   async waitForTransactionConfirmation(_tx: string, _pollingTime = 1000) {
@@ -244,7 +197,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await polling(async () => {
       try {
-        receipt = await this._web3.eth.getTransactionReceipt(_tx)
+        receipt = await this._publicClient.getTransactionReceipt({ hash: stringUtils.addHexPrefix(_tx) })
         if (!receipt) return false
         else if (receipt.status) return true
         else return false
@@ -262,15 +215,15 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     _operationId: string,
     _pollingTime = 1000,
   ) {
-    let log: Log
+    let log
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await polling(async () => {
       try {
-        const logs = (await this._web3.eth.getPastLogs({
+        const logs = await this._publicClient.getLogs({
           fromBlock: _fromBlock,
-          address: _hubAddress,
-          topics: [eventNameToSignatureMap.get(_eventName)],
-        })) as Log[]
+          address: stringUtils.addHexPrefix(_hubAddress),
+          events: events,
+        })
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
         if (log) return true
         return false
