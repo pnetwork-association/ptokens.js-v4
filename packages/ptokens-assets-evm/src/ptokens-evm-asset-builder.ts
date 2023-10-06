@@ -4,6 +4,7 @@ import { pTokensAssetBuilder } from 'ptokens-entities'
 import factoryAbi from './abi/PFactoryAbi'
 import { pTokensEvmAsset } from './ptokens-evm-asset'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
+import { WalletClient } from 'viem'
 
 export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
   private _provider: pTokensEvmProvider
@@ -31,24 +32,22 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
       abi: factoryAbi,
     })
 
-    if (this._assetInfo.assetTokenAddress !== this._assetInfo.underlyingAssetTokenAddress) {
-      const pTokenAddress = await this._provider.makeContractCall<string, [string, string, number, string, string]>(
-        {
-          contractAddress: this.factoryAddress,
-          method: 'getPTokenAddress',
-          abi: factoryAbi,
-        },
-        [
-          this.assetInfo.underlyingAssetName,
-          this.assetInfo.underlyingAssetSymbol,
-          this.assetInfo.underlyingAssetDecimals,
-          this.assetInfo.underlyingAssetTokenAddress,
-          this.assetInfo.underlyingAssetNetworkId,
-        ],
-      )
-      if (!this.assetInfo.assetTokenAddress) this.assetInfo.assetTokenAddress = pTokenAddress
-      else if (pTokenAddress !== this.assetInfo.assetTokenAddress) throw new Error('Invalid pToken address')
-    }
+    const pTokenAddress = await this._provider.makeContractCall<string, [string, string, number, string, string]>(
+      {
+        contractAddress: this.factoryAddress,
+        method: 'getPTokenAddress',
+        abi: factoryAbi,
+      },
+      [
+        this.assetInfo.underlyingAssetName,
+        this.assetInfo.underlyingAssetSymbol,
+        this.assetInfo.underlyingAssetDecimals,
+        this.assetInfo.underlyingAssetTokenAddress,
+        this.assetInfo.underlyingAssetNetworkId,
+      ],
+    )
+    if (!this.assetInfo.assetTokenAddress) this.assetInfo.assetTokenAddress = pTokenAddress
+      // else if (pTokenAddress !== this.assetInfo.assetTokenAddress) throw new Error('Invalid pToken address')
 
     const config = {
       networkId: this._networkId,
@@ -57,7 +56,8 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
       assetInfo: this.assetInfo,
       provider: this._provider,
       factoryAddress: this.factoryAddress,
-      hubAddress,
+      hubAddress: hubAddress,
+      pTokenAddress: pTokenAddress,
     }
     return new pTokensEvmAsset(config)
   }

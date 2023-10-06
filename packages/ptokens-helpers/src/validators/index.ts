@@ -11,6 +11,7 @@ export const chainIdToAddressValidatorMap: Map<NetworkId, (_address: string) => 
   [NetworkId.GoerliTestnet, validatorFunction('eth')],
   [NetworkId.ArbitrumMainnet, validatorFunction('eth')],
   [NetworkId.GnosisMainnet, validatorFunction('eth')],
+  [NetworkId.BscMainnet, validatorFunction('eth')],
   [NetworkId.PolygonMainnet, validatorFunction('eth')],
 ])
 

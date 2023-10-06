@@ -1,5 +1,6 @@
 import PromiEvent from 'promievent'
-import { TransactionReceipt } from 'web3'
+import { TransactionReceipt, createPublicClient, createWalletClient, http } from 'viem'
+import { mainnet } from 'viem/chains'
 
 import { pTokensEvmProvider } from '../src'
 import * as utils from '../src/lib'
@@ -10,13 +11,23 @@ import logs from './utils/logs.json'
 const receiptWithFalseStatus = require('./utils/receiptWithFalseStatus')
 const receiptWithTrueStatus = require('./utils/receiptWithTrueStatus')
 
+const publicClient = createPublicClient({ 
+  chain: mainnet,
+  transport: http()
+})
+
+const walletClient = createWalletClient({
+  chain: mainnet,
+  transport: http()
+})
+
 describe('EVM provider', () => {
   beforeEach(() => {
     jest.resetAllMocks()
   })
 
   test('Should throw with negative gas price', () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
       provider.setGasPrice(-1)
       fail()
@@ -26,7 +37,7 @@ describe('EVM provider', () => {
   })
 
   test('Should throw with negative gas price', () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
       provider.setGasPrice(1e12)
       fail()
@@ -36,7 +47,7 @@ describe('EVM provider', () => {
   })
 
   test('Should throw with negative gas limit', () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
       provider.setGasLimit(-1)
       fail()
@@ -46,7 +57,7 @@ describe('EVM provider', () => {
   })
 
   test('Should throw with negative gas limit', () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
       provider.setGasLimit(10e6)
       fail()
@@ -56,7 +67,7 @@ describe('EVM provider', () => {
   })
 
   test('Should add account from private key', () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const addAccountSpy = jest.spyOn(provider['_web3'].eth.accounts.wallet, 'add')
     provider.setPrivateKey('422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742')
     expect(addAccountSpy).toHaveBeenCalledTimes(1)
@@ -64,7 +75,7 @@ describe('EVM provider', () => {
   })
 
   test('Should not add account from invalid private key', () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
       provider.setPrivateKey('invalid-key')
       fail()
@@ -74,7 +85,7 @@ describe('EVM provider', () => {
   })
 
   test('Should call a contract method', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -110,7 +121,7 @@ describe('EVM provider', () => {
   })
 
   test('Should call a contract method with no arguments', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -146,7 +157,7 @@ describe('EVM provider', () => {
   })
 
   test('Should send a contract method', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -194,7 +205,7 @@ describe('EVM provider', () => {
   })
 
   test('Should send a contract method with no arguments', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -239,7 +250,7 @@ describe('EVM provider', () => {
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     provider.setGasLimit(200000)
     provider.setGasPrice(100e9)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
@@ -297,7 +308,7 @@ describe('EVM provider', () => {
   })
 
   test('Should send a contract method with set gas price', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     provider.setGasPrice(100e9)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
@@ -349,7 +360,7 @@ describe('EVM provider', () => {
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     provider.setGasLimit(200000)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
@@ -401,7 +412,7 @@ describe('EVM provider', () => {
   })
 
   test('Should send a contract method and emit txError', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -443,7 +454,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if getAccount throws', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.reject(new Error('getAccount exception'))
     })
@@ -464,7 +475,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if getContract throws', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -480,7 +491,7 @@ describe('EVM provider', () => {
           contractAddress: 'contract-address',
           value: '1',
         },
-        [1, 'arg2', 'arg3'],
+        [1, 'arg2', 'arg3'],pTokensEvmProvider(publicClient, walletClient)
       )
       fail()
     } catch (err) {
@@ -489,7 +500,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if contract method send throws', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     jest.spyOn(utils, 'getAccount').mockImplementation(() => {
       return Promise.resolve('evm-account')
     })
@@ -522,7 +533,7 @@ describe('EVM provider', () => {
   })
 
   test('Should wait for transaction confirmation', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const waitForConfirmationSpy = jest
       .spyOn(provider['_web3'].eth, 'getTransactionReceipt')
       .mockRejectedValueOnce(new Error('getTransactionReceipt error'))
@@ -540,7 +551,7 @@ describe('EVM provider', () => {
     let operationQueuedObject = null,
       operationExecutedObject = null,
       operationCancelledObject = null
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const spy = jest
       .fn()
       .mockRejectedValueOnce(new Error('getPastLogs error'))
@@ -592,7 +603,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject when an error occurs monitoring a cross chain operation', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     provider['_web3']['eth'].getBlock = jest.fn().mockRejectedValue(new Error('error'))
     try {
       await provider.monitorCrossChainOperations(

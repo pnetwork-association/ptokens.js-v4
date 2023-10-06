@@ -1,13 +1,22 @@
+import { sha256 } from '@noble/hashes/sha256'
+import { AbiEvent } from 'abitype'
 import BigNumber from 'bignumber.js'
 import { NetworkId } from 'ptokens-constants'
-import { PublicClient, keccak256, Abi } from 'viem'
-import { Web3, Log, TransactionReceipt } from 'web3'
-import { encodeEventSignature, decodeLog, encodeParameters } from 'web3-eth-abi'
-import { AbiEventFragment, ContractAbi } from 'web3-types'
-import { keccak256 } from 'web3-utils'
+import {
+  TransactionReceipt,
+  Log,
+  toBytes,
+  toHex,
+  encodeAbiParameters,
+  parseAbiParameter,
+  decodeEventLog,
+  getEventSelector,
+  PublicClient,
+} from 'viem'
 
-import events from '../abi/events'
+import pNetworkHubAbi from '../abi/PNetworkHubAbi'
 
+const events = pNetworkHubAbi.filter(({ type }) => type === 'event') as AbiEvent[]
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 export function onChainFormat(_amount: BigNumber.Value, _decimals: number): BigNumber {
@@ -18,21 +27,10 @@ export function offChainFormat(_amount: BigNumber.Value, _decimals: number) {
   return BigNumber(_amount).dividedBy(BigNumber(10).pow(_decimals))
 }
 
-// export async function getAccount(_web3: Web3): Promise<string> {
-//   if (_web3.eth.defaultAccount) return _web3.eth.defaultAccount
-//   const accounts = await _web3.eth.getAccounts()
-//   return accounts[0]
-// }
-
-// export function getContract(_web3: Web3, _abi: Abi, _contractAddress: string, _account: string = undefined) {
-//   const contract = new _web3.eth.Contract(_abi, _contractAddress)
-//   contract.defaultAccount = _account
-//   return contract
-// }
-
 export async function getGasLimit(_publicClient: PublicClient) {
-  const block = await _publicClient.getBlock({blockTag: 'latest'})
-  return block.gasLimit
+  const block = await _publicClient.getBlock({ blockTag: 'latest' })
+  if (block) return block.gasLimit
+  return block
 }
 
 export enum EVENT_NAMES {
@@ -44,7 +42,7 @@ export enum EVENT_NAMES {
 
 export const eventNameToSignatureMap = new Map<string, string>(
   events.map((_event) => {
-    const signature = encodeEventSignature(_event)
+    const signature = getEventSelector(_event)
     return [_event.name, signature]
   }),
 )
@@ -52,58 +50,84 @@ export const eventNameToSignatureMap = new Map<string, string>(
 const topicToAbiMap = new Map(
   events.map((_event) => {
     const signature = eventNameToSignatureMap.get(_event.name)
-    return [signature, _event as AbiEventFragment]
+    return [signature, _event]
   }),
 )
 
+/*
+    struct Operation {
+        bytes32 originBlockHash;
+        bytes32 originTransactionHash;
+        bytes32 optionsMask;
+        uint256 nonce;
+        uint256 underlyingAssetDecimals;
+        uint256 assetAmount;
+        uint256 protocolFeeAssetAmount;
+        uint256 networkFeeAssetAmount;
+        uint256 forwardNetworkFeeAssetAmount;
+        address underlyingAssetTokenAddress;
+        bytes4 originNetworkId;
+        bytes4 destinationNetworkId;
+        bytes4 forwardDestinationNetworkId;
+        bytes4 underlyingAssetNetworkId;
+        string originAccount;
+        string destinationAccount;
+        string underlyingAssetName;
+        string underlyingAssetSymbol;
+        bytes userData;
+        bool isForProtocol;
+    }
+
+    function operationIdOf(Operation calldata operation) public pure returns (bytes32) {
+        return sha256(abi.encode(operation));
+    }
+  */
+
 const getOperationIdFromObj = (_obj: any) => {
-  const types = [
-    'bytes32',
-    'bytes32',
-    'bytes4',
-    'uint256',
-    'string',
-    'bytes4',
-    'string',
-    'string',
-    'uint256',
-    'address',
-    'bytes4',
-    'uint256',
-    'bytes',
-    'bytes32',
-  ]
-  return keccak256(
-    encodeParameters(types, [
-      _obj.originatingBlockHash || _obj.originBlockHash || _obj.blockHash,
-      _obj.originatingTransactionHash || _obj.originTransactionHash || _obj.transactionHash,
-      _obj.originatingNetworkId || _obj.originNetworkId || _obj.networkId,
-      _obj.nonce,
-      _obj.destinationAccount,
-      _obj.destinationNetworkId,
-      _obj.underlyingAssetName,
-      _obj.underlyingAssetSymbol,
-      _obj.underlyingAssetDecimals,
-      _obj.underlyingAssetTokenAddress,
-      _obj.underlyingAssetNetworkId,
-      _obj.assetAmount,
-      _obj.userData || '0x',
-      _obj.optionsMask,
-    ]),
+  const abiParameter = parseAbiParameter(
+    '(bytes32 originBlockHash, bytes32 originTransactionHash, bytes32 optionsMask, uint256 nonce, uint256 underlyingAssetDecimals, uint256 assetAmount, uint256 protocolFeeAssetAmount, uint256 networkFeeAssetAmount, uint256 forwardNetworkFeeAssetAmount, address underlyingAssetTokenAddress, bytes4 originNetworkId, bytes4 destinationNetworkId, bytes4 forwardDestinationNetworkId, bytes4 underlyingAssetNetworkId, string originAccount, string destinationAccount, string underlyingAssetName, string underlyingAssetSymbol, bytes userData, bool isForProtocol) operation',
   )
+
+  const coded = encodeAbiParameters(
+    [abiParameter],
+    [
+      {
+        originBlockHash: _obj.originatingBlockHash || _obj.originBlockHash || _obj.blockHash,
+        originTransactionHash: _obj.originatingTransactionHash || _obj.originTransactionHash || _obj.transactionHash,
+        originNetworkId: _obj.originatingNetworkId || _obj.originNetworkId || _obj.networkId,
+        nonce: _obj.nonce,
+        originAccount: _obj.originAccount,
+        destinationAccount: _obj.destinationAccount,
+        destinationNetworkId: _obj.destinationNetworkId,
+        forwardDestinationNetworkId: _obj.forwardDestinationNetworkId,
+        underlyingAssetName: _obj.underlyingAssetName,
+        underlyingAssetSymbol: _obj.underlyingAssetSymbol,
+        underlyingAssetDecimals: _obj.underlyingAssetDecimals,
+        underlyingAssetTokenAddress: _obj.underlyingAssetTokenAddress,
+        underlyingAssetNetworkId: _obj.underlyingAssetNetworkId,
+        assetAmount: _obj.assetAmount,
+        protocolFeeAssetAmount: _obj.protocolFeeAssetAmount,
+        networkFeeAssetAmount: _obj.networkFeeAssetAmount,
+        forwardNetworkFeeAssetAmount: _obj.forwardNetworkFeeAssetAmount,
+        userData: _obj.userData || '0x',
+        optionsMask: _obj.optionsMask,
+        isForProtocol: _obj.isForProtocol,
+      },
+    ],
+  )
+  return toHex(sha256(toBytes(coded)))
 }
 
-const getEventInputsFromSignature = (_signature: string) => {
-  if (topicToAbiMap.has(_signature)) return [...topicToAbiMap.get(_signature).inputs]
-  throw new Error(`Missing abi for event signature ${_signature}`)
-}
-
-export const getOperationIdFromLog = (_log: Log, _networkId: NetworkId = null) => {
-  const decodedLog = decodeLog(getEventInputsFromSignature(_log.topics[0].toString()), _log.data.toString(), [])
+export const getOperationIdFromLog = (_log: Log<bigint>, _networkId: NetworkId | null = null) => {
+  const decodedLog = decodeEventLog({
+    abi: pNetworkHubAbi,
+    data: _log.data,
+    topics: _log.topics,
+  })
   return getOperationIdFromObj(
     Object.assign(
       {},
-      decodedLog.operation ? decodedLog.operation : decodedLog,
+      'operation' in decodedLog.args ? decodedLog.args.operation : decodedLog.args,
       {
         transactionHash: _log.transactionHash,
         blockHash: _log.blockHash,
@@ -113,15 +137,14 @@ export const getOperationIdFromLog = (_log: Log, _networkId: NetworkId = null) =
   )
 }
 
-export const getOperationIdFromTransactionReceipt = (_networkId: NetworkId, _receipt: TransactionReceipt) => {
-  return getOperationIdFromLog(
-    _receipt.logs.find(
-      (_log) =>
-        _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.USER_OPERATION) ||
-        _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_QUEUED) ||
-        _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_EXECUTED) ||
-        _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_CANCELLED),
-    ),
-    _networkId,
+export const getOperationIdFromTransactionReceipt = (_networkId: NetworkId, _receipt: TransactionReceipt<bigint>) => {
+  const relevantLog = _receipt.logs.find(
+    (_log) =>
+      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.USER_OPERATION) ||
+      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_QUEUED) ||
+      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_EXECUTED) ||
+      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_CANCELLED),
   )
+  if (!relevantLog) throw new Error('No valid event in the receipt logs')
+  return getOperationIdFromLog(relevantLog, _networkId)
 }

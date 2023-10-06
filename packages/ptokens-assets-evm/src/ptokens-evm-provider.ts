@@ -2,11 +2,11 @@ import polling from 'light-async-polling'
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
-import { Abi, PublicClient, WalletClient, TransactionReceipt } from 'viem'
+import { Abi, PublicClient, WalletClient, TransactionReceipt, http, createPublicClient, Log, fallback } from 'viem'
 import events from './abi/events'
-// import { privateKeyToAccount } from 'viem/accounts'
+import { polygon, bsc } from 'viem/chains'
 
-import { EVENT_NAMES, getOperationIdFromLog } from './lib/'
+import { EVENT_NAMES, getOperationIdFromLog, /* getOperationIdFromLog */ } from './lib/'
 
 const BLOCK_OFFSET = 1000
 
@@ -18,9 +18,9 @@ export type MakeContractSendOptions = {
   /** The contract address. */
   contractAddress: string
   /** The value being sent with the transaction. */
-  value: string
+  value: bigint
   /** The gas limit for the transaction. */
-  gasLimit?: number
+  gasLimit?: bigint
 }
 
 export type MakeContractCallOptions = {
@@ -32,41 +32,30 @@ export type MakeContractCallOptions = {
   contractAddress: string
 }
 
-// class SendObject<T> {
-//   account: `0x${string}`
-//   address: `0x${string}`
-//   abi: Abi
-//   functionName: string
-//   value: string
-//   gasPrice: string
-//   gas: string
-//   args: [] | T
-//   constructor(value: string) {
-//     this.value = value
-//   }
-//   maybeSetGasPrice(account: `0x${string}`, address:`0x${string}`, gasPrice: number) {
-//     if (gasPrice) this.gasPrice = gasPrice.toString()
-//     return this
-//   }
-//   maybeSetGasLimit(gasLimit: number) {
-//     if (gasLimit) this.gas = gasLimit.toString()
-//     return this
-//   }
-// }
-
 export class pTokensEvmProvider implements pTokensAssetProvider {
   private _publicClient: PublicClient
-  private _walletClient: WalletClient
-  private _gasPrice: number
-  private _gasLimit: number
+  private _walletClient: WalletClient | undefined
+  private _gasPrice: bigint | undefined
+  private _gasLimit: bigint | undefined
 
   /**
    * Create and initialize a pTokensEvmProvider object.
-   * @param _provider - A web3.js provider (refer to https://web3js.readthedocs.io/en/v1.8.0/web3.html#setprovider).
+   * @param _publicClient - A viem public client.
+   * @param _walletClient - A viem wallet client.
    */
-  constructor(_publicClient: PublicClient, _walletClient: WalletClient) {
+  constructor(_publicClient: PublicClient, _walletClient?: WalletClient) {
     this._publicClient = _publicClient
+    if (_walletClient) this._walletClient = _walletClient
+  }
+
+  /**
+   * Set a viem walletCLient creating and sending transactions.
+   * @param _walletClient - A viem walletClient.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setWalletClient(_walletClient: WalletClient): this {
     this._walletClient = _walletClient
+    return this
   }
 
   /**
@@ -81,7 +70,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas price to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasPrice(_gasPrice: number) {
+  setGasPrice(_gasPrice: bigint) {
     if (BigInt(_gasPrice) <= 0n || BigInt(_gasPrice) >= 1e12) {
       throw new Error('Invalid gas price')
     }
@@ -101,7 +90,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas limit to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasLimit(_gasLimit: number) {
+  setGasLimit(_gasLimit: bigint) {
     if (_gasLimit <= 0 || _gasLimit >= 10e6) {
       throw new Error('Invalid gas limit')
     }
@@ -146,6 +135,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       (resolve, reject) =>
         (async () => {
           try {
+            if (!this._walletClient) throw new Error('WalletClient not provided')
             const { method, abi, contractAddress, value, gasLimit } = _options
             const [account] = await this._walletClient.getAddresses()
             const { request } = await this._publicClient.simulateContract({
@@ -158,7 +148,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               gas: (gasLimit || this.gasLimit) ? (gasLimit || this.gasLimit) : undefined,
               gasPrice: this.gasPrice ? this.gasPrice : undefined
             })
-            const txHash = await this._walletClient.writeContract(request as any)
+            const txHash = await this._walletClient.writeContract(request)
             promi.emit('txBroadcasted', txHash)
             const txReceipt = await this._publicClient.waitForTransactionReceipt({ hash: txHash })
             promi.emit('txConfirmed', txReceipt)
@@ -188,12 +178,15 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       address: stringUtils.addHexPrefix(contractAddress),
       abi: abi,
       functionName: method,
-      args: _args
+      args: _args,
     }) as Promise<R>
   }
 
+  /**
+   * @deprecated Use https://viem.sh/docs/actions/public/waitForTransactionReceipt.html instead
+   */
   async waitForTransactionConfirmation(_tx: string, _pollingTime = 1000) {
-    let receipt: TransactionReceipt = null
+    let receipt: TransactionReceipt | undefined
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await polling(async () => {
       try {
@@ -205,7 +198,9 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         return false
       }
     }, _pollingTime)
-    return receipt.transactionHash.toString()
+    if (!receipt)
+       throw new Error('No receipt found. Try to increase the polling time')
+    return receipt.transactionHash.toString() // not clear why TransactionReceipt
   }
 
   protected async _pollForHubOperation(
@@ -215,14 +210,14 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     _operationId: string,
     _pollingTime = 1000,
   ) {
-    let log
+    let log: Log | undefined
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await polling(async () => {
       try {
         const logs = await this._publicClient.getLogs({
           fromBlock: _fromBlock,
           address: stringUtils.addHexPrefix(_hubAddress),
-          events: events,
+          events: events.filter((event) => event.name == _eventName),
         })
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
         if (log) return true
@@ -231,6 +226,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         return false
       }
     }, _pollingTime)
+
     return log
   }
 

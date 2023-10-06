@@ -29,7 +29,7 @@ export class pTokensSwap {
     this._destinationAssets = destinationAssets
     this._amount = BigNumber(amount)
     this._controller = new AbortController()
-    if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
+    // if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
   }
 
   /**

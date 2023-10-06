@@ -6,12 +6,13 @@ import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 import pNetworkHubAbi from './abi/PNetworkHubAbi'
 import { ZERO_ADDRESS, getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
+import { WalletClient } from 'viem'
 
 const USER_SEND_METHOD = 'userSend'
 
 export type pTokenEvmAssetConfig = pTokenAssetConfig & {
   /** An pTokensEvmProvider for interacting with the underlaying blockchain */
-  provider?: pTokensEvmProvider
+  provider: pTokensEvmProvider
 }
 export class pTokensEvmAsset extends pTokensAsset {
   private _provider: pTokensEvmProvider
@@ -27,6 +28,17 @@ export class pTokensEvmAsset extends pTokensAsset {
 
   get provider() {
     return this._provider
+  }
+
+  /**
+   * Set a walletClient to the existing provider.
+   * @param _walletClient - A viem walletClient.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setWalletClient(_walletClient: WalletClient
+    ): this {
+    this._provider.setWalletClient(_walletClient)
+    return this
   }
 
   protected swap(
@@ -53,8 +65,6 @@ export class pTokensEvmAsset extends pTokensAsset {
               this.assetInfo.underlyingAssetNetworkId, // underlyingAssetNetworkId
               this.assetInfo.assetTokenAddress, // assetTokenAddress
               onChainFormat(_amount, this.assetInfo.decimals).toString(), // assetAmount
-              ZERO_ADDRESS, // protocolFeeAssetTokenAddress
-              BigNumber(0).toString(), // protocolFeeAssetAmount
               _networkFees.toString(), // networkFeeAssetAmount
               _forwardNetworkFees.toString(), // forwardNetworkFeeAssetAmount
               _userData, // userData
@@ -66,7 +76,7 @@ export class pTokensEvmAsset extends pTokensAsset {
                   method: USER_SEND_METHOD,
                   abi: pNetworkHubAbi,
                   contractAddress: this.hubAddress,
-                  value: '0',
+                  value: 0n,
                 },
                 args,
               )

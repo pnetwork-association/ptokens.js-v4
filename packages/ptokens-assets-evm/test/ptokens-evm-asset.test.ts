@@ -1,13 +1,14 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
 import { Blockchain, NetworkId, Network } from 'ptokens-constants'
-import { TransactionReceipt } from 'web3-types'
+import { TransactionReceipt } from 'viem'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
 import pFactoryAbi from '../src/abi/PFactoryAbi'
 import pNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 
 import receipt from './utils/receiptUserSend.json'
+import { publicClient, walletClient } from './utils/viem-clients'
 
 describe('EVM asset', () => {
   beforeEach(() => {
@@ -69,9 +70,9 @@ describe('EVM asset', () => {
     })
 
     test('Should call makeContractSend with userSend', async () => {
-      const provider = new pTokensEvmProvider('http://provider.eth')
+      const provider = new pTokensEvmProvider(publicClient, walletClient)
       const getTransactionReceiptSpy = jest.fn().mockResolvedValue(receipt)
-      provider['_web3'].eth.getTransactionReceipt = getTransactionReceiptSpy
+      publicClient.getTransactionReceipt = getTransactionReceiptSpy
       const makeContractSendSpy = jest.spyOn(provider, 'makeContractSend').mockImplementation(() => {
         const promi = new PromiEvent<TransactionReceipt>((resolve) =>
           setImmediate(() => {
@@ -145,7 +146,7 @@ describe('EVM asset', () => {
     })
 
     test('Should reject if makeContractSend rejects', async () => {
-      const provider = new pTokensEvmProvider('http://provider.eth')
+      const provider = new pTokensEvmProvider(publicClient, walletClient)
       jest.spyOn(provider, 'makeContractSend').mockImplementation(() => {
         const promi = new PromiEvent<TransactionReceipt>((resolve, reject) => {
           return reject(new Error('makeContractSend error'))
@@ -183,7 +184,7 @@ describe('EVM asset', () => {
     })
 
     test('Should call provider monitorCrossChainOperations', async () => {
-      const provider = new pTokensEvmProvider('http://provider.eth')
+      const provider = new pTokensEvmProvider(publicClient, walletClient)
       const monitorCrossChainOperationsSpy = jest
         .spyOn(provider, 'monitorCrossChainOperations')
         .mockResolvedValue('tx-hash')

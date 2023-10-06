@@ -2,6 +2,7 @@ import { Blockchain, NetworkId, Network } from 'ptokens-constants'
 
 import { pTokensEvmAssetBuilder, pTokensEvmProvider } from '../src'
 import ABI from '../src/abi/PFactoryAbi'
+import { publicClient, walletClient } from './utils/viem-clients'
 
 describe('EVM asset', () => {
   beforeAll(() => {
@@ -20,7 +21,7 @@ describe('EVM asset', () => {
       underlyingAssetName: 'Symbol',
       underlyingAssetTokenAddress: 'underlying-asset-token-address',
     }
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const makeContractCallSpy = jest
       .spyOn(provider, 'makeContractCall')
       .mockResolvedValueOnce('hub-address')
@@ -73,7 +74,7 @@ describe('EVM asset', () => {
       underlyingAssetName: 'Symbol',
       underlyingAssetTokenAddress: 'asset-token-address',
     }
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const makeContractCallSpy = jest
       .spyOn(provider, 'makeContractCall')
       .mockResolvedValueOnce('hub-address')
@@ -111,7 +112,7 @@ describe('EVM asset', () => {
       underlyingAssetName: 'Symbol',
       underlyingAssetTokenAddress: 'underlying-asset-token-address',
     }
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const makeContractCallSpy = jest
       .spyOn(provider, 'makeContractCall')
       .mockResolvedValueOnce('hub-address')
@@ -153,7 +154,7 @@ describe('EVM asset', () => {
   })
 
   test('Should not create an EVM asset without blockchain data', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const builder = new pTokensEvmAssetBuilder(provider)
     try {
       await builder.build()
@@ -164,7 +165,7 @@ describe('EVM asset', () => {
   })
 
   test('Should not create an EVM asset without asset info', async () => {
-    const provider = new pTokensEvmProvider('http://provider.eth')
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
     const builder = new pTokensEvmAssetBuilder(provider)
     try {
       builder.setBlockchain(NetworkId.SepoliaTestnet)

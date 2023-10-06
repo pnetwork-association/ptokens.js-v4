@@ -10,6 +10,7 @@ export type pTokenAssetConfig = {
   assetInfo: AssetInfo
   factoryAddress: string
   hubAddress: string
+  pTokenAddress: string
   /** The asset weight during the swap. Defaults to 1. Actually it is not supported.  */
   weight?: number
 }
@@ -74,6 +75,7 @@ export type SwapResult = {
 export abstract class pTokensAsset {
   private _factoryAddress: string
   private _hubAddress: string
+  private _pTokenAddress: string
   private _assetInfo: AssetInfo
   private _weight: number
   private _type: BlockchainType
@@ -89,6 +91,7 @@ export abstract class pTokensAsset {
     this._weight = _config.weight || 1
     this._factoryAddress = _config.factoryAddress
     this._hubAddress = _config.hubAddress
+    this._pTokenAddress = _config.pTokenAddress
   }
 
   /** Return the pTokensFactory's address. */
@@ -99,6 +102,11 @@ export abstract class pTokensAsset {
   /** Return the pNetworkHub's address. */
   get hubAddress(): string {
     return this._hubAddress
+  }
+
+  /** Return the pNetworkHub's address. */
+  get pTokenAddress(): string {
+    return this._pTokenAddress
   }
 
   /** Return the token's symbol. */
