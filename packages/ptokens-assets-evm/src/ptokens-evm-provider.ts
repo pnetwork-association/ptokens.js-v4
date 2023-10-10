@@ -2,11 +2,10 @@ import polling from 'light-async-polling'
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
-import { Abi, PublicClient, WalletClient, TransactionReceipt, http, createPublicClient, Log, fallback } from 'viem'
-import events from './abi/events'
-import { polygon, bsc } from 'viem/chains'
+import { Abi, PublicClient, WalletClient, TransactionReceipt, Log, Block } from 'viem'
 
-import { EVENT_NAMES, getOperationIdFromLog, /* getOperationIdFromLog */ } from './lib/'
+import events from './abi/events'
+import { EVENT_NAMES, getOperationIdFromLog /* getOperationIdFromLog */ } from './lib/'
 
 const BLOCK_OFFSET = 1000
 
@@ -21,6 +20,8 @@ export type MakeContractSendOptions = {
   value: bigint
   /** The gas limit for the transaction. */
   gasLimit?: bigint
+  /** The number of confirmation to wait before returning the tx receipt */
+  confirmations?: number
 }
 
 export type MakeContractCallOptions = {
@@ -98,23 +99,25 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     return this
   }
 
-  /**
-   * Set a private key to sign transactions.
-   * @param _key - A private key to sign transactions.
-   * @returns The same provider. This allows methods chaining.
-   */
-  setPrivateKey(_key: string) {
-    // TODO
-    return this
-  }
+  // /**
+  //  * Set a private key to sign transactions.
+  //  * @param _key - A private key to sign transactions.
+  //  * @returns The same provider. This allows methods chaining.
+  //  */
+  // setPrivateKey(_key: string) {
+  //   // TODO
+  //   return this
+  // }
 
-  async getLatestBlockNumber() {
-    const block = await this._publicClient.getBlock({ blockTag: 'latest'})
+  async getLatestBlockNumber(): Promise<bigint | null> {
+    const block: Block = await this._publicClient.getBlock({ blockTag: 'latest' })
     return block.number
   }
 
-  async getTransactionReceipt(_hash: string) {
-    const receipt = await this._publicClient.getTransactionReceipt({ hash: stringUtils.addHexPrefix(_hash)})
+  async getTransactionReceipt(_hash: string): Promise<TransactionReceipt> {
+    const receipt: TransactionReceipt = await this._publicClient.getTransactionReceipt({
+      hash: stringUtils.addHexPrefix(_hash),
+    })
     return receipt
   }
 
@@ -136,7 +139,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         (async () => {
           try {
             if (!this._walletClient) throw new Error('WalletClient not provided')
-            const { method, abi, contractAddress, value, gasLimit } = _options
+            const { method, abi, contractAddress, value, gasLimit, confirmations } = _options
             const [account] = await this._walletClient.getAddresses()
             const { request } = await this._publicClient.simulateContract({
               account,
@@ -145,12 +148,15 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               functionName: method,
               value: value,
               args: _args,
-              gas: (gasLimit || this.gasLimit) ? (gasLimit || this.gasLimit) : undefined,
-              gasPrice: this.gasPrice ? this.gasPrice : undefined
+              gas: gasLimit || this.gasLimit ? gasLimit || this.gasLimit : undefined,
+              gasPrice: this.gasPrice ? this.gasPrice : undefined,
             })
             const txHash = await this._walletClient.writeContract(request)
             promi.emit('txBroadcasted', txHash)
-            const txReceipt = await this._publicClient.waitForTransactionReceipt({ hash: txHash })
+            const txReceipt: TransactionReceipt = await this._publicClient.waitForTransactionReceipt({
+              hash: txHash,
+              confirmations: confirmations ? confirmations : 1,
+            })
             promi.emit('txConfirmed', txReceipt)
             return resolve(txReceipt)
           } catch (_err) {
@@ -198,8 +204,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         return false
       }
     }, _pollingTime)
-    if (!receipt)
-       throw new Error('No receipt found. Try to increase the polling time')
+    if (!receipt) throw new Error('No receipt found. Try to increase the polling time')
     return receipt.transactionHash.toString() // not clear why TransactionReceipt
   }
 
@@ -217,7 +222,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         const logs = await this._publicClient.getLogs({
           fromBlock: _fromBlock,
           address: stringUtils.addHexPrefix(_hubAddress),
-          events: events.filter((event) => event.name == _eventName),
+          events: events.filter((event) => event.name == _eventName.toString()),
         })
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
         if (log) return true

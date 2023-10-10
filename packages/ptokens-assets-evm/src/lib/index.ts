@@ -12,6 +12,7 @@ import {
   decodeEventLog,
   getEventSelector,
   PublicClient,
+  Block,
 } from 'viem'
 
 import pNetworkHubAbi from '../abi/PNetworkHubAbi'
@@ -27,10 +28,9 @@ export function offChainFormat(_amount: BigNumber.Value, _decimals: number) {
   return BigNumber(_amount).dividedBy(BigNumber(10).pow(_decimals))
 }
 
-export async function getGasLimit(_publicClient: PublicClient) {
-  const block = await _publicClient.getBlock({ blockTag: 'latest' })
-  if (block) return block.gasLimit
-  return block
+export async function getGasLimit(_publicClient: PublicClient): Promise<bigint> {
+  const block: Block = await _publicClient.getBlock({ blockTag: 'latest' })
+  return block.gasLimit
 }
 
 export enum EVENT_NAMES {
@@ -47,45 +47,9 @@ export const eventNameToSignatureMap = new Map<string, string>(
   }),
 )
 
-const topicToAbiMap = new Map(
-  events.map((_event) => {
-    const signature = eventNameToSignatureMap.get(_event.name)
-    return [signature, _event]
-  }),
-)
-
-/*
-    struct Operation {
-        bytes32 originBlockHash;
-        bytes32 originTransactionHash;
-        bytes32 optionsMask;
-        uint256 nonce;
-        uint256 underlyingAssetDecimals;
-        uint256 assetAmount;
-        uint256 protocolFeeAssetAmount;
-        uint256 networkFeeAssetAmount;
-        uint256 forwardNetworkFeeAssetAmount;
-        address underlyingAssetTokenAddress;
-        bytes4 originNetworkId;
-        bytes4 destinationNetworkId;
-        bytes4 forwardDestinationNetworkId;
-        bytes4 underlyingAssetNetworkId;
-        string originAccount;
-        string destinationAccount;
-        string underlyingAssetName;
-        string underlyingAssetSymbol;
-        bytes userData;
-        bool isForProtocol;
-    }
-
-    function operationIdOf(Operation calldata operation) public pure returns (bytes32) {
-        return sha256(abi.encode(operation));
-    }
-  */
-
 const getOperationIdFromObj = (_obj: any) => {
   const abiParameter = parseAbiParameter(
-    '(bytes32 originBlockHash, bytes32 originTransactionHash, bytes32 optionsMask, uint256 nonce, uint256 underlyingAssetDecimals, uint256 assetAmount, uint256 protocolFeeAssetAmount, uint256 networkFeeAssetAmount, uint256 forwardNetworkFeeAssetAmount, address underlyingAssetTokenAddress, bytes4 originNetworkId, bytes4 destinationNetworkId, bytes4 forwardDestinationNetworkId, bytes4 underlyingAssetNetworkId, string originAccount, string destinationAccount, string underlyingAssetName, string underlyingAssetSymbol, bytes userData, bool isForProtocol) operation',
+    '(bytes32 originBlockHash, bytes32 originTransactionHash, bytes32 optionsMask, uint256 nonce, uint256 underlyingAssetDecimals, uint256 assetAmount, uint256 userDataProtocolFeeAssetAmount, uint256 networkFeeAssetAmount, uint256 forwardNetworkFeeAssetAmount, address underlyingAssetTokenAddress, bytes4 originNetworkId, bytes4 destinationNetworkId, bytes4 forwardDestinationNetworkId, bytes4 underlyingAssetNetworkId, string originAccount, string destinationAccount, string underlyingAssetName, string underlyingAssetSymbol, bytes userData, bool isForProtocol) operation',
   )
 
   const coded = encodeAbiParameters(
@@ -106,7 +70,7 @@ const getOperationIdFromObj = (_obj: any) => {
         underlyingAssetTokenAddress: _obj.underlyingAssetTokenAddress,
         underlyingAssetNetworkId: _obj.underlyingAssetNetworkId,
         assetAmount: _obj.assetAmount,
-        protocolFeeAssetAmount: _obj.protocolFeeAssetAmount,
+        userDataProtocolFeeAssetAmount: _obj.userDataProtocolFeeAssetAmount,
         networkFeeAssetAmount: _obj.networkFeeAssetAmount,
         forwardNetworkFeeAssetAmount: _obj.forwardNetworkFeeAssetAmount,
         userData: _obj.userData || '0x',
@@ -115,6 +79,7 @@ const getOperationIdFromObj = (_obj: any) => {
       },
     ],
   )
+
   return toHex(sha256(toBytes(coded)))
 }
 

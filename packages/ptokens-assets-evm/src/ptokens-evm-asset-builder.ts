@@ -4,7 +4,6 @@ import { pTokensAssetBuilder } from 'ptokens-entities'
 import factoryAbi from './abi/PFactoryAbi'
 import { pTokensEvmAsset } from './ptokens-evm-asset'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
-import { WalletClient } from 'viem'
 
 export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
   private _provider: pTokensEvmProvider
@@ -47,7 +46,7 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
       ],
     )
     if (!this.assetInfo.assetTokenAddress) this.assetInfo.assetTokenAddress = pTokenAddress
-      // else if (pTokenAddress !== this.assetInfo.assetTokenAddress) throw new Error('Invalid pToken address')
+    // else if (pTokenAddress !== this.assetInfo.assetTokenAddress) throw new Error('Invalid pToken address')
 
     const config = {
       networkId: this._networkId,
