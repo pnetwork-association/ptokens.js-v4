@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
-import { BlockchainType } from 'ptokens-constants'
+import { BlockchainType, NetworkId } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 import { TransactionReceipt, WalletClient } from 'viem'
 
@@ -14,6 +14,7 @@ export type pTokenEvmAssetConfig = pTokenAssetConfig & {
   /** An pTokensEvmProvider for interacting with the underlaying blockchain */
   provider: pTokensEvmProvider
 }
+
 export class pTokensEvmAsset extends pTokensAsset {
   private _provider: pTokensEvmProvider
 
@@ -82,8 +83,7 @@ export class pTokensEvmAsset extends pTokensAsset {
               .once('txBroadcasted', (_hash: string) => {
                 promi.emit('txBroadcasted', { txHash: _hash })
               })
-              .once('txError', reject)
-              .once('txConfirmed', resolve)
+              .then()
             const ret = {
               txHash: txReceipt.transactionHash.toString(),
               operationId: getOperationIdFromTransactionReceipt(this.networkId, txReceipt),
@@ -98,7 +98,7 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  protected monitorCrossChainOperations(_operationId: string): PromiEvent<string> {
-    return this.provider.monitorCrossChainOperations(this.hubAddress, _operationId)
+  protected monitorCrossChainOperations(_operationId: string, _interimHubAddress: string): PromiEvent<string> {
+    return this.provider.monitorCrossChainOperations(this.hubAddress, _interimHubAddress, _operationId)
   }
 }

@@ -2,6 +2,7 @@ import { sha256 } from '@noble/hashes/sha256'
 import { AbiEvent } from 'abitype'
 import BigNumber from 'bignumber.js'
 import { NetworkId } from 'ptokens-constants'
+import { polygon } from 'viem/chains'
 import {
   TransactionReceipt,
   Log,
@@ -13,12 +14,23 @@ import {
   getEventSelector,
   PublicClient,
   Block,
+  Chain,
 } from 'viem'
 
 import pNetworkHubAbi from '../abi/PNetworkHubAbi'
 
+
 const events = pNetworkHubAbi.filter(({ type }) => type === 'event') as AbiEvent[]
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+export const getViemChain = (networkId: NetworkId): Chain => {
+  switch (networkId) {
+    case NetworkId.PolygonMainnet: 
+      return polygon
+      break
+    default: throw new Error(`${networkId} is not supported as interim Chain, check ptokens-constants`)
+  }
+}
 
 export function onChainFormat(_amount: BigNumber.Value, _decimals: number): BigNumber {
   return BigNumber(_amount).multipliedBy(BigNumber(10).pow(_decimals))
@@ -89,7 +101,7 @@ export const getOperationIdFromLog = (_log: Log<bigint>, _networkId: NetworkId |
     data: _log.data,
     topics: _log.topics,
   })
-  return getOperationIdFromObj(
+  const id = getOperationIdFromObj(
     Object.assign(
       {},
       'operation' in decodedLog.args ? decodedLog.args.operation : decodedLog.args,
@@ -100,16 +112,18 @@ export const getOperationIdFromLog = (_log: Log<bigint>, _networkId: NetworkId |
       _networkId ? { networkId: _networkId } : {},
     ),
   )
+  return id
 }
 
 export const getOperationIdFromTransactionReceipt = (_networkId: NetworkId, _receipt: TransactionReceipt<bigint>) => {
   const relevantLog = _receipt.logs.find(
     (_log) =>
-      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.USER_OPERATION) ||
-      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_QUEUED) ||
-      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_EXECUTED) ||
-      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_CANCELLED),
+      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.USER_OPERATION) //||
+      // _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_QUEUED) ||
+      // _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_EXECUTED) ||
+      // _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.OPERATION_CANCELLED),
   )
   if (!relevantLog) throw new Error('No valid event in the receipt logs')
-  return getOperationIdFromLog(relevantLog, _networkId)
+  const operationIds = getOperationIdFromLog(relevantLog, _networkId)
+  return operationIds
 }

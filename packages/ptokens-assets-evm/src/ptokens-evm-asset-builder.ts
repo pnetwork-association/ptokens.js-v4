@@ -1,4 +1,4 @@
-import { BlockchainType } from 'ptokens-constants'
+import { BlockchainType, FactoryAddress, NetworkId } from 'ptokens-constants'
 import { pTokensAssetBuilder } from 'ptokens-entities'
 
 import factoryAbi from './abi/PFactoryAbi'
@@ -30,7 +30,6 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
       method: 'hub',
       abi: factoryAbi,
     })
-
     const pTokenAddress = await this._provider.makeContractCall<string, [string, string, number, string, string]>(
       {
         contractAddress: this.factoryAddress,
@@ -46,7 +45,6 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
       ],
     )
     if (!this.assetInfo.assetTokenAddress) this.assetInfo.assetTokenAddress = pTokenAddress
-    // else if (pTokenAddress !== this.assetInfo.assetTokenAddress) throw new Error('Invalid pToken address')
 
     const config = {
       networkId: this._networkId,

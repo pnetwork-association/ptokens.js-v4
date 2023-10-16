@@ -3,6 +3,7 @@ import { pTokensAsset } from 'ptokens-entities'
 import { validators } from 'ptokens-helpers'
 
 import { pTokensSwap, DestinationInfo } from './ptokens-swap'
+import { NetworkId } from 'ptokens-constants'
 
 export class pTokensSwapBuilder {
   private _sourceAsset: pTokensAsset
@@ -10,6 +11,7 @@ export class pTokensSwapBuilder {
   private _amount: BigNumber
   private _networkFees: BigNumber
   private _forwardNetworkFees: BigNumber
+  private _interim: NetworkId
 
   /**
    * Return the pTokensAsset set as source asset for the swap.
@@ -118,6 +120,16 @@ export class pTokensSwapBuilder {
     return this
   }
 
+  /**
+   * Set Interim Chain NetworkId.
+   * @param _networkId - The NetworkId of the Interim Chain.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setInterimChain(_networkId: NetworkId) {
+    this._interim = _networkId
+    return this
+  }
+
   private isValidSwap() {
     return true // TODO: check ptoken adresses are the same
   }
@@ -131,7 +143,8 @@ export class pTokensSwapBuilder {
     if (this._destinationAssets.length === 0) throw new Error('Missing destination assets')
     if (!this._amount) throw new Error('Missing amount')
     if (!this.isValidSwap()) throw new Error('Invalid swap')
-    const ret = new pTokensSwap(this.sourceAsset, this._destinationAssets, this._amount)
+    if (!this._interim) this.setInterimChain(NetworkId.PolygonMainnet)
+    const ret = new pTokensSwap(this.sourceAsset, this._destinationAssets, this._amount, this._interim)
     return ret
   }
 }

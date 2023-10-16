@@ -9,5 +9,7 @@ export abstract class pTokensAssetProvider {
    */
   abstract waitForTransactionConfirmation(_txHash: string, _pollingTime?: number): Promise<string>
 
-  abstract monitorCrossChainOperations(_hubAddress: string, _operationId: string): PromiEvent<string>
+  abstract monitorCrossChainOperations(_hubAddress: string, _interimHubAddress: string, _operationId: string): PromiEvent<string>
+
+  abstract getInterimHubAddress(): Promise<string>
 }

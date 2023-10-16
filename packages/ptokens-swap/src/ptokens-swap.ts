@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
+import { NetworkId } from 'ptokens-constants'
 import { SwapResult, pTokensAsset } from 'ptokens-entities'
 
 export type DestinationInfo = {
@@ -16,19 +17,22 @@ export class pTokensSwap {
   private _destinationAssets: DestinationInfo[]
   private _amount: BigNumber
   private _controller: AbortController
+  private _interim: NetworkId
 
   /**
    * Create and initialize a pTokensSwap object. pTokensSwap object shall be created using a pTokensSwapBuilder object.
    * @param sourceAsset - The pTokensAsset that will be the source asset for the swap.
    * @param destinationAssets - The pTokensAsset array that will be destination assets for the swap.
    * @param amount - The amount of source asset that will be swapped.
+   * @param interim - The NetworkId of the InterimChain.
    */
-  constructor(sourceAsset: pTokensAsset, destinationAssets: DestinationInfo[], amount: BigNumber.Value) {
+  constructor(sourceAsset: pTokensAsset, destinationAssets: DestinationInfo[], amount: BigNumber.Value, interim: NetworkId) {
     this._sourceAsset = sourceAsset
     if (destinationAssets.length !== 1) throw new Error('There must be one and only one destination asset')
     this._destinationAssets = destinationAssets
     this._amount = BigNumber(amount)
     this._controller = new AbortController()
+    this._interim = interim
     // if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
   }
 
@@ -91,8 +95,8 @@ export class pTokensSwap {
     return BigNumber(this.expectedOutputAmount).isGreaterThanOrEqualTo(0)
   }
 
-  private monitorOutputTransactions(_operationId: string) {
-    return this.destinationAssets[0]['monitorCrossChainOperations'](_operationId)
+  private monitorOutputTransactions(_operationId: string, _interimHubAddress: string) {
+    return this.destinationAssets[0]['monitorCrossChainOperations'](_operationId, _interimHubAddress)
   }
 
   /**
@@ -137,15 +141,25 @@ export class pTokensSwap {
               .on('txConfirmed', (_swapResult: SwapResult) => {
                 promi.emit('inputTxConfirmed', _swapResult)
               })
-            const outputTx = await this.monitorOutputTransactions(swapResult.operationId)
-              .on('operationQueued', (_hash: string) => {
-                promi.emit('operationQueued', { txHash: _hash, operationId: swapResult.operationId })
+            const interimHubAddress = await this.destinationAssets[0].provider.getInterimHubAddress()
+            const outputTx = await this.monitorOutputTransactions(swapResult.operationId, interimHubAddress)
+              .on('interimOperationQueued', (_hash: string) => {
+                promi.emit('interimOperationQueued', { txHash: _hash, operationId: swapResult.operationId })
               })
-              .on('operationExecuted', (_hash: string) => {
-                promi.emit('operationExecuted', { txHash: _hash, operationId: swapResult.operationId })
+              .on('interimOperationExecuted', (_hash: string) => {
+                promi.emit('interimOperationExecuted', { txHash: _hash, operationId: swapResult.operationId })
               })
-              .on('operationCancelled', (_hash: string) => {
-                promi.emit('operationCancelled', { txHash: _hash, operationId: swapResult.operationId })
+              .on('interimOperationCancelled', (_hash: string) => {
+                promi.emit('interimOperationCancelled', { txHash: _hash, operationId: swapResult.operationId })
+              })
+              .on('operationQueued', (_hash: string, _operationId: string) => {
+                promi.emit('operationQueued', { txHash: _hash, operationId: _operationId })
+              })
+              .on('operationExecuted', (_hash: string, _operationId: string) => {
+                promi.emit('operationExecuted', { txHash: _hash, operationId: _operationId })
+              })
+              .on('operationCancelled', (_hash: string, _operationId: string) => {
+                promi.emit('operationCancelled', { txHash: _hash, operationId: _operationId })
               })
             return resolve({ txHash: outputTx, operationId: swapResult.operationId })
           } catch (err) {

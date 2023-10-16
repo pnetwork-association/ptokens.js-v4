@@ -1,13 +1,16 @@
+// @ts-ignore
 import polling from 'light-async-polling'
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
-import { Abi, PublicClient, WalletClient, TransactionReceipt, Log, Block } from 'viem'
+import { createPublicClient, Abi, PublicClient, WalletClient, TransactionReceipt, Log, Block, http } from 'viem'
 
-import events from './abi/events'
-import { EVENT_NAMES, getOperationIdFromLog /* getOperationIdFromLog */ } from './lib/'
+import pNetworkHubAbi from './abi/PNetworkHubAbi'
+import factoryAbi from './abi/PFactoryAbi'
+import { EVENT_NAMES, getOperationIdFromLog, getOperationIdFromTransactionReceipt, getViemChain } from './lib/'
+import { FactoryAddress, INTERIM_NETWORK_ID } from 'ptokens-constants'
 
-const BLOCK_OFFSET = 1000
+const BLOCK_OFFSET = 1000n
 
 export type MakeContractSendOptions = {
   /** The method to be called. */
@@ -31,10 +34,13 @@ export type MakeContractCallOptions = {
   abi: Abi
   /** The contract address. */
   contractAddress: string
+  /** Call on the interim chain */
+  onInterim?: boolean
 }
 
 export class pTokensEvmProvider implements pTokensAssetProvider {
   private _publicClient: PublicClient
+  private _interimClient: PublicClient
   private _walletClient: WalletClient | undefined
   private _gasPrice: bigint | undefined
   private _gasLimit: bigint | undefined
@@ -46,6 +52,10 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    */
   constructor(_publicClient: PublicClient, _walletClient?: WalletClient) {
     this._publicClient = _publicClient
+    this._interimClient = createPublicClient({ 
+      chain: getViemChain(INTERIM_NETWORK_ID),
+      transport: http()
+    })
     if (_walletClient) this._walletClient = _walletClient
   }
 
@@ -64,6 +74,22 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    */
   get gasPrice() {
     return this._gasPrice
+  }
+
+  async getInterimHubAddress(): Promise<string> {
+    try {
+      const interimFactoryAddress = FactoryAddress.get(INTERIM_NETWORK_ID)
+      if (!interimFactoryAddress) throw new Error('Could not retreive interim Factory address')
+      return await this.makeContractCall<string, []>({
+        contractAddress: interimFactoryAddress,
+        method: 'hub',
+        abi: factoryAbi,
+        onInterim: true,
+      })
+    } catch(_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      throw new Error(_err.message)
+    }
   }
 
   /**
@@ -109,16 +135,11 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
   //   return this
   // }
 
-  async getLatestBlockNumber(): Promise<bigint | null> {
-    const block: Block = await this._publicClient.getBlock({ blockTag: 'latest' })
+  async getLatestBlockNumber(onInterim?: boolean): Promise<bigint | null> { 
+    const block: Block = onInterim ?
+      await this._interimClient.getBlock({ blockTag: 'latest' }) :
+      await this._publicClient.getBlock({ blockTag: 'latest' })
     return block.number
-  }
-
-  async getTransactionReceipt(_hash: string): Promise<TransactionReceipt> {
-    const receipt: TransactionReceipt = await this._publicClient.getTransactionReceipt({
-      hash: stringUtils.addHexPrefix(_hash),
-    })
-    return receipt
   }
 
   /**
@@ -142,7 +163,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
             const { method, abi, contractAddress, value, gasLimit, confirmations } = _options
             const [account] = await this._walletClient.getAddresses()
             const { request } = await this._publicClient.simulateContract({
-              account,
+              account: account,
               address: stringUtils.addHexPrefix(contractAddress),
               abi: abi,
               functionName: method,
@@ -160,7 +181,6 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
             promi.emit('txConfirmed', txReceipt)
             return resolve(txReceipt)
           } catch (_err) {
-            promi.emit('txError', _err)
             return reject(_err)
           }
         })() as unknown,
@@ -179,13 +199,21 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     _options: MakeContractCallOptions,
     _args: T | [] = [],
   ): Promise<R> {
-    const { method, abi, contractAddress } = _options
-    return this._publicClient.readContract({
-      address: stringUtils.addHexPrefix(contractAddress),
-      abi: abi,
-      functionName: method,
-      args: _args,
-    }) as Promise<R>
+    const { method, abi, contractAddress, onInterim } = _options
+    if (onInterim)
+      return this._interimClient.readContract({
+        address: stringUtils.addHexPrefix(contractAddress),
+        abi: abi,
+        functionName: method,
+        args: _args,
+      }) as Promise<R>
+    else
+      return this._publicClient.readContract({
+        address: stringUtils.addHexPrefix(contractAddress),
+        abi: abi,
+        functionName: method,
+        args: _args,
+      }) as Promise<R>
   }
 
   /**
@@ -204,7 +232,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         return false
       }
     }, _pollingTime)
-    if (!receipt) throw new Error('No receipt found. Try to increase the polling time')
+    if (!receipt) throw new Error('Polling function stopped unexpectedly. No receipt found')
     return receipt.transactionHash.toString() // not clear why TransactionReceipt
   }
 
@@ -213,42 +241,82 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     _eventName: EVENT_NAMES,
     _fromBlock: bigint,
     _operationId: string,
+    _onInterim: boolean,
     _pollingTime = 1000,
-  ) {
+  ): Promise<Log> {
     let log: Log | undefined
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await polling(async () => {
       try {
-        const logs = await this._publicClient.getLogs({
-          fromBlock: _fromBlock,
-          address: stringUtils.addHexPrefix(_hubAddress),
-          events: events.filter((event) => event.name == _eventName.toString()),
-        })
+        log = undefined
+        const logs = _onInterim ?
+          await this._interimClient.getLogs({
+            fromBlock: _fromBlock,
+            address: stringUtils.addHexPrefix(_hubAddress),
+            events: pNetworkHubAbi.filter((_fun) => _fun.type === 'event' && _fun.name === _eventName.toString()),
+          }) :
+          await this._publicClient.getLogs({
+            fromBlock: _fromBlock,
+            address: stringUtils.addHexPrefix(_hubAddress),
+            events: pNetworkHubAbi.filter((_fun) => _fun.type === 'event' && _fun.name === _eventName.toString()),
+          })
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
         if (log) return true
         return false
-      } catch (_err) {
+      } catch (_err) {  
         return false
       }
     }, _pollingTime)
-
+    if (!log) throw new Error('Polling function stopped unexpectedly. No log found')
     return log
   }
 
-  monitorCrossChainOperations(_hubAddress: string, _operationId: string) {
+  monitorCrossChainOperations(_hubAddress: string, _interimHubAddress: string, _operationId: string) {
     const promi = new PromiEvent<string>(
       (resolve, reject) =>
         (async () => {
           try {
-            const fromBlock = (await this.getLatestBlockNumber()) - BigInt(BLOCK_OFFSET)
-            await this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_QUEUED, fromBlock, _operationId).then(
+            const interimLatestBlockNumber = await this._interimClient.getBlock({ blockTag: 'latest' })
+            if (!interimLatestBlockNumber) throw new Error('Viem could not retreive latest block number')
+            const interimFromBlock = interimLatestBlockNumber.number - BLOCK_OFFSET
+            await this._pollForHubOperation(_interimHubAddress, EVENT_NAMES.OPERATION_QUEUED, interimFromBlock, _operationId, true).then(
+              (_log) => {
+                promi.emit('interimOperationQueued', _log.transactionHash)
+                return _log
+              },
+            )
+            const interimOperationExecuted: Log = await Promise.any([
+              this._pollForHubOperation(_interimHubAddress, EVENT_NAMES.OPERATION_EXECUTED, interimFromBlock, _operationId, true).then(
+                (_log) => {
+                  promi.emit('interimOperationExecuted', _log.transactionHash)
+                  return _log
+                },
+              ),
+              // TODO: need a way to stop this polling whenever the OPERATION_EXECUTED polling resolves
+              // this._pollForStateManagerOperation(
+              //   _stateManagerAddress,
+              //   EVENT_NAMES.OPERATION_CANCELLED,
+              //   fromBlock,
+              //   _operationId
+              // ).then((_log) => {
+              //   promi.emit('operationCancelled', _log.transactionHash)
+              //   return _log
+              // }),
+            ])
+            if (!interimOperationExecuted.transactionHash) throw new Error('Tx Log do not contain a transaction hash')
+            const interimExecutedReceipt = await this._interimClient.waitForTransactionReceipt({hash: stringUtils.addHexPrefix(interimOperationExecuted.transactionHash)})
+            const destChainOpId = getOperationIdFromTransactionReceipt(INTERIM_NETWORK_ID, interimExecutedReceipt)
+            const latestBlockNumber = await this.getLatestBlockNumber(false)
+            if (!latestBlockNumber) throw new Error('Viem could not retreive latest block number')
+            const fromBlock = latestBlockNumber - BigInt(BLOCK_OFFSET)
+            await this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_QUEUED, fromBlock, destChainOpId, false).then(
               (_log) => {
                 promi.emit('operationQueued', _log.transactionHash)
                 return _log
               },
             )
-            const finalTxLog = await Promise.any([
-              this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_EXECUTED, fromBlock, _operationId).then(
+            const finalTxLog: Log = await Promise.any([
+              this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_EXECUTED, fromBlock, destChainOpId, false).then(
                 (_log) => {
                   promi.emit('operationExecuted', _log.transactionHash)
                   return _log
@@ -265,6 +333,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               //   return _log
               // }),
             ])
+            if (!finalTxLog.transactionHash) throw new Error('Tx Log do not contain a transaction hash')
             return resolve(finalTxLog.transactionHash.toString())
           } catch (_err) {
             return reject(_err)

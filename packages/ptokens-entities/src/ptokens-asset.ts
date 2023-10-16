@@ -170,5 +170,5 @@ export abstract class pTokensAsset {
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  protected abstract monitorCrossChainOperations(_operationId: string): PromiEvent<string>
+  protected abstract monitorCrossChainOperations(_operationId: string, _interimHubAddress: string): PromiEvent<string>
 }
