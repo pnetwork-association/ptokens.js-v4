@@ -4,7 +4,6 @@ import { Blockchain, NetworkId, Network } from 'ptokens-constants'
 import { TransactionReceipt } from 'viem'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
-import pFactoryAbi from '../src/abi/PFactoryAbi'
 import pNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 
 import receipt from './utils/receiptUserSend.json'
@@ -31,6 +30,8 @@ describe('EVM asset', () => {
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
+        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        provider: new pTokensEvmProvider(publicClient),
       })
       expect(asset.symbol).toStrictEqual('pSYM')
       expect(asset.blockchain).toStrictEqual(Blockchain.Sepolia)
@@ -60,20 +61,23 @@ describe('EVM asset', () => {
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
+        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        provider: new pTokensEvmProvider(publicClient),
       })
       try {
         await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
         fail()
-      } catch (err) {
-        expect(err.message).toEqual('Missing provider')
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual('WalletClient not provided')
       }
     })
 
     test('Should call makeContractSend with userSend', async () => {
       const provider = new pTokensEvmProvider(publicClient, walletClient)
-      const getTransactionReceiptSpy = jest.fn().mockResolvedValue(receipt)
-      publicClient.getTransactionReceipt = getTransactionReceiptSpy
-      const makeContractSendSpy = jest.spyOn(provider, 'makeContractSend').mockImplementation(() => {
+      // const getTransactionReceiptSpy = jest.fn().mockResolvedValue(receipt)
+      // publicClient.getTransactionReceipt = getTransactionReceiptSpy
+      const makeContractSendMock = jest.fn().mockImplementation(() => {
         const promi = new PromiEvent<TransactionReceipt>((resolve) =>
           setImmediate(() => {
             promi.emit('txBroadcasted', 'tx-hash')
@@ -83,6 +87,7 @@ describe('EVM asset', () => {
         )
         return promi
       })
+      provider.makeContractSend = makeContractSendMock
       const asset = new pTokensEvmAsset({
         provider: provider,
         assetInfo: {
@@ -98,32 +103,36 @@ describe('EVM asset', () => {
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
+        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
       })
       let txHashBroadcasted = ''
       let swapResultConfirmed = null
+      // promiEvent works weird with async await syntax -> TODO avoid async await with promiEvent
       const ret = await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
         .on('txBroadcasted', (_txHash) => {
+          console.log('_txHash', _txHash)
           txHashBroadcasted = _txHash
         })
         .on('txConfirmed', (_swapResult) => {
+          console.log('_swapResult', _swapResult)
           swapResultConfirmed = _swapResult
         })
       expect(txHashBroadcasted).toEqual({ txHash: 'tx-hash' })
       expect(swapResultConfirmed).toEqual({
-        operationId: '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
-        txHash: '0xcd5f6d7d2aabd3af5269459b6310892f4e56aa0cfd05024ba16bcf901c9bccd2',
+        operationId: '0x0decc3b04f997633384503d6cd7a9f818d2ce2df6a994c566d1de32662e8630f',
+        txHash: '0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308',
       })
       expect(ret).toEqual({
-        operationId: '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
-        txHash: '0xcd5f6d7d2aabd3af5269459b6310892f4e56aa0cfd05024ba16bcf901c9bccd2',
+        operationId: '0x0decc3b04f997633384503d6cd7a9f818d2ce2df6a994c566d1de32662e8630f',
+        txHash: '0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308',
       })
-      expect(makeContractSendSpy).toHaveBeenNthCalledWith(
+      expect(makeContractSendMock).toHaveBeenNthCalledWith(
         1,
         {
           abi: pNetworkHubAbi,
           contractAddress: 'hub-address',
           method: 'userSend',
-          value: '0',
+          value: 0n,
         },
         [
           'destination-address',
@@ -135,8 +144,6 @@ describe('EVM asset', () => {
           'underlying-asset-network-id',
           'asset-token-address',
           '123456789000000000000',
-          '0x0000000000000000000000000000000000000000',
-          '0',
           '0',
           '0',
           '0x',
@@ -168,12 +175,14 @@ describe('EVM asset', () => {
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
+        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
       })
       try {
         await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
         fail()
-      } catch (err) {
-        expect(err.message).toStrictEqual('makeContractSend error')
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toStrictEqual('makeContractSend error')
       }
     })
   })
@@ -203,8 +212,9 @@ describe('EVM asset', () => {
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
+        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
       })
-      const ret = await asset['monitorCrossChainOperations']('operation-id')
+      const ret = await asset['monitorCrossChainOperations']('operation-id', '0x6153ec976a5b3886caf3a88d8d994c4cec24203e')
       expect(ret).toStrictEqual('tx-hash')
       expect(monitorCrossChainOperationsSpy).toHaveBeenCalledTimes(1)
     })

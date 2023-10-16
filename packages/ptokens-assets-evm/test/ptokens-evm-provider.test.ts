@@ -1,12 +1,13 @@
-import PromiEvent from 'promievent'
 import { TransactionReceipt, createPublicClient, createWalletClient, http } from 'viem'
-import { mainnet } from 'viem/chains'
+import { mainnet, polygon } from 'viem/chains'
 
 import { pTokensEvmProvider } from '../src'
 import * as utils from '../src/lib'
-
 import abi from './utils/exampleContractABI'
 import logs from './utils/logs.json'
+import interimOperationExecutedReceipt from './utils/receiptOperationExecuted.json'
+import factoryAbi from '../src/abi/PFactoryAbi'
+import { poll } from 'viem/utils/poll'
 
 const receiptWithFalseStatus = require('./utils/receiptWithFalseStatus')
 const receiptWithTrueStatus = require('./utils/receiptWithTrueStatus')
@@ -21,6 +22,11 @@ const walletClient = createWalletClient({
   transport: http()
 })
 
+const walletClient2 = createWalletClient({
+  chain: polygon,
+  transport: http()
+})
+
 describe('EVM provider', () => {
   beforeEach(() => {
     jest.resetAllMocks()
@@ -29,165 +35,303 @@ describe('EVM provider', () => {
   test('Should throw with negative gas price', () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
-      provider.setGasPrice(-1)
+      provider.setGasPrice(-1n)
       fail()
-    } catch (err) {
-      expect(err.message).toEqual('Invalid gas price')
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('Invalid gas price')
     }
   })
 
   test('Should throw with negative gas price', () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
-      provider.setGasPrice(1e12)
+      provider.setGasPrice(BigInt(1e12))
       fail()
-    } catch (err) {
-      expect(err.message).toEqual('Invalid gas price')
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('Invalid gas price')
     }
   })
 
   test('Should throw with negative gas limit', () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
     try {
-      provider.setGasLimit(-1)
+      provider.setGasLimit(BigInt(10e6))
       fail()
-    } catch (err) {
-      expect(err.message).toEqual('Invalid gas limit')
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('Invalid gas limit')
     }
   })
 
-  test('Should throw with negative gas limit', () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    try {
-      provider.setGasLimit(10e6)
-      fail()
-    } catch (err) {
-      expect(err.message).toEqual('Invalid gas limit')
-    }
+  test('Should set a walletClient', () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    provider.setWalletClient(walletClient)
+    expect(provider['_walletClient']).toBe(walletClient)
   })
 
-  test('Should add account from private key', () => {
+  test('Should overwrite walletClient', () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const addAccountSpy = jest.spyOn(provider['_web3'].eth.accounts.wallet, 'add')
-    provider.setPrivateKey('422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742')
-    expect(addAccountSpy).toHaveBeenCalledTimes(1)
-    expect(provider['_web3'].eth.defaultAccount).toEqual('0xdf3B180694aB22C577f7114D822D28b92cadFd75')
+    provider.setWalletClient(walletClient2)
+    expect(provider['_walletClient']).toBe(walletClient2)
   })
 
-  test('Should not add account from invalid private key', () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    try {
-      provider.setPrivateKey('invalid-key')
-      fail()
-    } catch (err) {
-      expect(err.message).toEqual('Invalid Private Key, Not a valid string or uint8Array')
-    }
-  })
-
-  test('Should call a contract method', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const callMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+  test('Should return interimHubAddress', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    const makeContractCallMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve(123456)
+          return resolve('0x6153ec976a5b3886caf3a88d8d994c4cec24203e')
         }),
       )
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      call: callMock,
-    }))
-    contract.methods['number'] = setNumberMock
+    provider.makeContractCall = makeContractCallMock
+    const interimHubAddress = await provider.getInterimHubAddress()
+    expect(interimHubAddress).toBe('0x6153ec976a5b3886caf3a88d8d994c4cec24203e')
+    expect(makeContractCallMock).toHaveBeenNthCalledWith(1, {
+      contractAddress: '0x4650787da4A497496e514EcCFd6F888B7804ebBe',
+      method: 'hub',
+      abi: factoryAbi,
+      onInterim: true,
+    })
+  })
+
+  // test('Should throw if factory address does not exists', async () => {
+  //   jest.spyOn(require('ptokens-constants').FactoryAddress, 'get').mockReturnValue(undefined)
+  //   const provider = new pTokensEvmProvider(publicClient)
+  //   try {
+  //     const a = await provider.getInterimHubAddress()
+  //     fail()
+  //   } catch (_err) {
+  //     if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+  //     expect(_err.message).toEqual('makeContractCall exception')
+  //   }
+  // })
+
+  test('Should throw if call fails', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    try {
+      const makeContractCallMock = jest.fn().mockImplementation(() => {
+        return Promise.reject(new Error('makeContractCall exception'))
+      })
+      provider.makeContractCall = makeContractCallMock
+      const a = await provider.getInterimHubAddress()
+      console.log('a', a)
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('makeContractCall exception')
+    }
+  })
+
+  // TODO add support for privateKey walletClients
+
+  // test('Should add account from private key', () => {
+  //   const provider = new pTokensEvmProvider(publicClient, walletClient)
+  //   const addAccountSpy = jest.spyOn(provider['_web3'].eth.accounts.wallet, 'add')
+  //   provider.setPrivateKey('422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742')
+  //   expect(addAccountSpy).toHaveBeenCalledTimes(1)
+  //   expect(provider['_web3'].eth.defaultAccount).toEqual('0xdf3B180694aB22C577f7114D822D28b92cadFd75')
+  // })
+
+  // test('Should not add account from invalid private key', () => {
+  //   const provider = new pTokensEvmProvider(publicClient, walletClient)
+  //   try {
+  //     provider.setPrivateKey('invalid-key')
+  //     fail()
+  //   } catch (err) {
+  //     expect(err.message).toEqual('Invalid Private Key, Not a valid string or uint8Array')
+  //   }
+  // })
+
+  test('Should call a contract method', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    const options = {
+      method: 'number',
+      abi,
+      contractAddress: '0xb794f5ea0ba39494ce839613fffba74279579268',
+    }
+    const args = [1, 'arg2', 'arg3']
+    const expectedArgs = {
+      address: options.contractAddress,
+      abi: options.abi,
+      functionName: options.method,
+      args: args
+    }
+    const publicReadContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('publicClientCall')
+        }),
+      )
+      return promi
+    })
+    const interimReadContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('interimClientCall')
+        }),
+      )
+      return promi
+    })
+    provider['_interimClient'].readContract = interimReadContractMock
+    publicClient.readContract = publicReadContractMock
     const res = await provider.makeContractCall(
-      {
-        method: 'number',
-        abi,
-        contractAddress: 'contract-address',
-      },
-      [1, 'arg2', 'arg3'],
+      options,
+      args,
     )
-    expect(res).toEqual(123456)
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
-    expect(callMock).toHaveBeenNthCalledWith(1)
+    expect(res).toEqual('publicClientCall')
+    expect(publicReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(interimReadContractMock).toHaveBeenCalledTimes(0)
+  })
+
+  test('Should call a contract method on interim chain', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    const options = {
+      method: 'number',
+      abi,
+      contractAddress: '0xb794f5ea0ba39494ce839613fffba74279579268',
+      onInterim: true,
+    }
+    const args = [1, 'arg2', 'arg3']
+    const expectedArgs = {
+      address: options.contractAddress,
+      abi: options.abi,
+      functionName: options.method,
+      args: args
+    }
+    const publicReadContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('publicClientCall')
+        }),
+      )
+      return promi
+    })
+    const interimReadContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('interimClientCall')
+        }),
+      )
+      return promi
+    })
+    provider['_interimClient'].readContract = interimReadContractMock
+    publicClient.readContract = publicReadContractMock
+    const res = await provider.makeContractCall(
+      options,
+      args,
+    )
+    expect(res).toEqual('interimClientCall')
+    expect(interimReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(publicReadContractMock).toHaveBeenCalledTimes(0)
   })
 
   test('Should call a contract method with no arguments', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const callMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    const options = {
+      method: 'number',
+      abi,
+      contractAddress: '0xb794f5ea0ba39494ce839613fffba74279579268',
+    }
+    const expectedArgs = {
+      address: options.contractAddress,
+      abi: options.abi,
+      functionName: options.method,
+      args: [],
+    }
+    const publicReadContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve(123456)
+          return resolve('publicClientCall')
         }),
       )
       return promi
     })
-    const numberMock = jest.fn().mockImplementation(() => ({
-      call: callMock,
-    }))
-    contract.methods['number'] = numberMock
+    const interimReadContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('interimClientCall')
+        }),
+      )
+      return promi
+    })
+    provider['_interimClient'].readContract = interimReadContractMock
+    publicClient.readContract = publicReadContractMock
     const res = await provider.makeContractCall<number, []>(
-      {
-        method: 'number',
-        abi,
-        contractAddress: 'contract-address',
-      },
-      [],
+      options
     )
-    expect(res).toEqual(123456)
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(numberMock).toHaveBeenNthCalledWith(1)
-    expect(callMock).toHaveBeenNthCalledWith(1)
+    expect(res).toEqual('publicClientCall')
+    expect(publicReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(interimReadContractMock).toHaveBeenCalledTimes(0)
   })
 
   test('Should send a contract method', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    const args = [1, 'arg2', 'arg3']
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
+    const method = 'setNumber'
+    const value = 1n
+    const expectedArgs = {
+      account: account,
+      address: contractAddress,
+      abi: abi,
+      functionName: method,
+      value: value,
+      args: args,
+      gas: undefined,
+      gasPrice: undefined,
+    }
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve({ transactionHash: 'tx-hash' })
+          return resolve([account])
         }),
       )
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['setNumber'] = setNumberMock
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-hash')
+        }),
+      )
+      return promi
+    })
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-receipt')
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedHash = ''
     const txHash = await provider
       .makeContractSend(
         {
-          method: 'setNumber',
+          method: method,
           abi,
-          contractAddress: 'contract-address',
-          value: '1',
+          contractAddress: contractAddress,
+          value: value,
         },
-        [1, 'arg2', 'arg3'],
+        args,
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -195,94 +339,77 @@ describe('EVM provider', () => {
       .once('txConfirmed', (_hash) => {
         txConfirmedHash = _hash
       })
-    expect(txHash).toEqual({ transactionHash: 'tx-hash' })
+    expect(txHash).toEqual('tx-receipt')
     expect(txBroadcastedHash).toEqual('tx-hash')
-    expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
-    expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
+    expect(txConfirmedHash).toEqual('tx-receipt')
+    expect(getAddressMock).toHaveBeenCalledTimes(1)
+    expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
   })
 
   test('Should send a contract method with no arguments', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
+    const method = 'setNumber'
+    const value = 1n
+    const expectedArgs = {
+      account: account,
+      address: contractAddress,
+      abi: abi,
+      functionName: method,
+      value: value,
+      args: [],
+      gas: undefined,
+      gasPrice: undefined,
+    }
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve({ transactionHash: 'tx-hash' })
+          return resolve([account])
         }),
       )
       return promi
     })
-    const numberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['number'] = numberMock
-    let txBroadcastedHash = ''
-    let txConfirmedHash = ''
-    const txHash = await provider
-      .makeContractSend<[]>({
-        method: 'number',
-        abi,
-        contractAddress: 'contract-address',
-        value: '1',
-      })
-      .once('txBroadcasted', (_hash) => {
-        txBroadcastedHash = _hash
-      })
-      .once('txConfirmed', (_hash) => {
-        txConfirmedHash = _hash
-      })
-    expect(txHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(txBroadcastedHash).toEqual('tx-hash')
-    expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(numberMock).toHaveBeenNthCalledWith(1)
-    expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
-  })
-
-  test('Should send a contract method with set gas price and gas limit', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    provider.setGasLimit(200000)
-    provider.setGasPrice(100e9)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve({ transactionHash: 'tx-hash' })
+          return resolve('tx-hash')
         }),
       )
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['setNumber'] = setNumberMock
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-receipt')
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedHash = ''
     const txHash = await provider
       .makeContractSend(
         {
-          method: 'setNumber',
+          method: method,
           abi,
-          contractAddress: 'contract-address',
-          value: '1',
+          contractAddress: contractAddress,
+          value: value,
         },
-        [1, 'arg2', 'arg3'],
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -290,56 +417,247 @@ describe('EVM provider', () => {
       .once('txConfirmed', (_hash) => {
         txConfirmedHash = _hash
       })
-    expect(txHash).toEqual({ transactionHash: 'tx-hash' })
+    expect(txHash).toEqual('tx-receipt')
     expect(txBroadcastedHash).toEqual('tx-hash')
-    expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
-    expect(sendMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        from: 'evm-account',
-        value: '1',
-        gas: '200000',
-        gasPrice: '100000000000',
-      }),
-    )
+    expect(txConfirmedHash).toEqual('tx-receipt')
+    expect(getAddressMock).toHaveBeenCalledTimes(1)
+    expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
+  })
+
+  test('Should send a contract method with waiting for n confirmation', async () => {
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const args = [1, 'arg2', 'arg3']
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
+    const method = 'setNumber'
+    const value = 1n
+    const confs = 5
+    const expectedArgs = {
+      account: account,
+      address: contractAddress,
+      abi: abi,
+      functionName: method,
+      value: value,
+      args: args,
+      gas: undefined,
+      gasPrice: undefined,
+    }
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([account])
+        }),
+      )
+      return promi
+    })
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-hash')
+        }),
+      )
+      return promi
+    })
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-receipt')
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    let txBroadcastedHash = ''
+    let txConfirmedHash = ''
+    const txHash = await provider
+      .makeContractSend(
+        {
+          method: method,
+          abi,
+          contractAddress: contractAddress,
+          value: value,
+          confirmations: confs,
+        },
+        args,
+      )
+      .once('txBroadcasted', (_hash) => {
+        txBroadcastedHash = _hash
+      })
+      .once('txConfirmed', (_hash) => {
+        txConfirmedHash = _hash
+      })
+    expect(txHash).toEqual('tx-receipt')
+    expect(txBroadcastedHash).toEqual('tx-hash')
+    expect(txConfirmedHash).toEqual('tx-receipt')
+    expect(getAddressMock).toHaveBeenCalledTimes(1)
+    expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: confs, hash: 'tx-hash'})
+  })
+
+  test('Should send a contract method with set gas price and gas limit', async () => {
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const args = [1, 'arg2', 'arg3']
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
+    const method = 'setNumber'
+    const value = 1n
+    const gasLmit = 200000n
+    const gasPrice = BigInt(100e9)
+    provider.setGasLimit(gasLmit)
+    provider.setGasPrice(gasPrice)
+    const expectedArgs = {
+      account: account,
+      address: contractAddress,
+      abi: abi,
+      functionName: method,
+      value: value,
+      args: args,
+      gas: gasLmit,
+      gasPrice: gasPrice,
+    }
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([account])
+        }),
+      )
+      return promi
+    })
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-hash')
+        }),
+      )
+      return promi
+    })
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-receipt')
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    let txBroadcastedHash = ''
+    let txConfirmedHash = ''
+    const txHash = await provider
+      .makeContractSend(
+        {
+          method: method,
+          abi,
+          contractAddress: contractAddress,
+          value: value,
+        },
+        args,
+      )
+      .once('txBroadcasted', (_hash) => {
+        txBroadcastedHash = _hash
+      })
+      .once('txConfirmed', (_hash) => {
+        txConfirmedHash = _hash
+      })
+    expect(txHash).toEqual('tx-receipt')
+    expect(txBroadcastedHash).toEqual('tx-hash')
+    expect(txConfirmedHash).toEqual('tx-receipt')
+    expect(getAddressMock).toHaveBeenCalledTimes(1)
+    expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
   })
 
   test('Should send a contract method with set gas price', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    provider.setGasPrice(100e9)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    const args = [1, 'arg2', 'arg3']
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
+    const method = 'setNumber'
+    const value = 1n
+    const gasPrice = BigInt(100e9)
+    provider.setGasPrice(gasPrice)
+    const expectedArgs = {
+      account: account,
+      address: contractAddress,
+      abi: abi,
+      functionName: method,
+      value: value,
+      args: args,
+      gas: undefined,
+      gasPrice: gasPrice,
+    }
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve({ transactionHash: 'tx-hash' })
+          return resolve([account])
         }),
       )
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['setNumber'] = setNumberMock
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-hash')
+        }),
+      )
+      return promi
+    })
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-receipt')
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedHash = ''
     const txHash = await provider
       .makeContractSend(
         {
-          method: 'setNumber',
+          method: method,
           abi,
-          contractAddress: 'contract-address',
-          value: '1',
+          contractAddress: contractAddress,
+          value: value,
         },
-        [1, 'arg2', 'arg3'],
+        args,
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -347,51 +665,81 @@ describe('EVM provider', () => {
       .once('txConfirmed', (_hash) => {
         txConfirmedHash = _hash
       })
-    expect(txHash).toEqual({ transactionHash: 'tx-hash' })
+    expect(txHash).toEqual('tx-receipt')
     expect(txBroadcastedHash).toEqual('tx-hash')
-    expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
-    expect(sendMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ from: 'evm-account', value: '1', gasPrice: '100000000000' }),
-    )
+    expect(txConfirmedHash).toEqual('tx-receipt')
+    expect(getAddressMock).toHaveBeenCalledTimes(1)
+    expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    provider.setGasLimit(200000)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    const args = [1, 'arg2', 'arg3']
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
+    const method = 'setNumber'
+    const value = 1n
+    const gasLmit = 200000n
+    provider.setGasLimit(gasLmit)
+    const expectedArgs = {
+      account: account,
+      address: contractAddress,
+      abi: abi,
+      functionName: method,
+      value: value,
+      args: args,
+      gas: gasLmit,
+      gasPrice: undefined,
+    }
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('transactionHash', 'tx-hash')
-          promi.emit('receipt', { transactionHash: 'tx-hash' })
-          return resolve({ transactionHash: 'tx-hash' })
+          return resolve([account])
         }),
       )
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['setNumber'] = setNumberMock
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-hash')
+        }),
+      )
+      return promi
+    })
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-receipt')
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedHash = ''
     const txHash = await provider
       .makeContractSend(
         {
-          method: 'setNumber',
+          method: method,
           abi,
-          contractAddress: 'contract-address',
-          value: '1',
+          contractAddress: contractAddress,
+          value: value,
         },
-        [1, 'arg2', 'arg3'],
+        args,
       )
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
@@ -399,143 +747,190 @@ describe('EVM provider', () => {
       .once('txConfirmed', (_hash) => {
         txConfirmedHash = _hash
       })
-    expect(txHash).toEqual({ transactionHash: 'tx-hash' })
+    expect(txHash).toEqual('tx-receipt')
     expect(txBroadcastedHash).toEqual('tx-hash')
-    expect(txConfirmedHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
-    expect(sendMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ from: 'evm-account', value: '1', gas: '200000' }),
-    )
+    expect(txConfirmedHash).toEqual('tx-receipt')
+    expect(getAddressMock).toHaveBeenCalledTimes(1)
+    expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
+    expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
   })
 
-  test('Should send a contract method and emit txError', async () => {
+  test('Should reject if walletClient is not defined', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    try {
+      await provider.makeContractSend(
+        {
+          method: 'setNumber',
+          abi,
+          contractAddress: 'contract-address',
+          value: 1n,
+        },
+        [1, 'arg2', 'arg3'],
+      )
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('WalletClient not provided')
+    }
+  })
+
+  test('Should reject if getAddresses throws', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const getAccountSpy = jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      return Promise.reject(new Error('getAddresses exception'))
     })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    const getContractSpy = jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve) =>
+    walletClient.getAddresses = getAddressMock
+    try {
+      await provider.makeContractSend(
+        {
+          method: 'setNumber',
+          abi,
+          contractAddress: 'contract-address',
+          value: 1n,
+        },
+        [1, 'arg2', 'arg3'],
+      )
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('getAddresses exception')
+    }
+  })
+
+  test('Should reject if simulateContract throws', async () => {
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
         setImmediate(() => {
-          promi.emit('error', new Error('tx-error'))
-          return resolve({ transactionHash: 'tx-hash' })
+          return resolve([account])
         }),
       )
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['setNumber'] = setNumberMock
-    let txError = new Error()
-    const txHash = await provider
-      .makeContractSend<[number, string, string]>(
-        {
-          method: 'setNumber',
-          abi,
-          contractAddress: 'contract-address',
-          value: '1',
-        },
-        [1, 'arg2', 'arg3'],
-      )
-      .once('txError', (_error) => {
-        txError = _error
-      })
-    expect(txHash).toEqual({ transactionHash: 'tx-hash' })
-    expect(txError.message).toStrictEqual('tx-error')
-    expect(getAccountSpy).toHaveBeenNthCalledWith(1, provider['_web3'])
-    expect(getContractSpy).toHaveBeenNthCalledWith(1, provider['_web3'], abi, 'contract-address', 'evm-account')
-    expect(setNumberMock).toHaveBeenNthCalledWith(1, 1, 'arg2', 'arg3')
-    expect(sendMock).toHaveBeenNthCalledWith(1, expect.objectContaining({ from: 'evm-account', value: '1' }))
-  })
-
-  test('Should reject if getAccount throws', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.reject(new Error('getAccount exception'))
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      return Promise.reject(new Error('simulateContract exception'))
     })
+    walletClient.getAddresses = getAddressMock
+    publicClient.simulateContract = simulateContractMock
     try {
       await provider.makeContractSend(
         {
           method: 'setNumber',
           abi,
-          contractAddress: 'contract-address',
-          value: '1',
+          contractAddress: account,
+          value: 1n,
         },
         [1, 'arg2', 'arg3'],
       )
       fail()
-    } catch (err) {
-      expect(err.message).toEqual('getAccount exception')
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('simulateContract exception')
     }
   })
 
-  test('Should reject if getContract throws', async () => {
+  test('Should reject if writeContract throws', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    jest.spyOn(utils, 'getContract').mockImplementation(() => {
-      throw new Error('getContract exception')
-    })
-
-    try {
-      await provider.makeContractSend(
-        {
-          method: 'setNumber',
-          abi,
-          contractAddress: 'contract-address',
-          value: '1',
-        },
-        [1, 'arg2', 'arg3'],pTokensEvmProvider(publicClient, walletClient)
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([account])
+        }),
       )
-      fail()
-    } catch (err) {
-      expect(err.message).toEqual('getContract exception')
-    }
-  })
-
-  test('Should reject if contract method send throws', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    jest.spyOn(utils, 'getAccount').mockImplementation(() => {
-      return Promise.resolve('evm-account')
-    })
-    const contract = new provider['_web3'].eth.Contract(abi)
-    jest.spyOn(utils, 'getContract').mockImplementation(() => contract)
-    const sendMock = jest.fn().mockImplementation(() => {
-      const promi = new PromiEvent((resolve, reject) => {
-        return reject(new Error('method send error'))
-      })
       return promi
     })
-    const setNumberMock = jest.fn().mockImplementation(() => ({
-      send: sendMock,
-    }))
-    contract.methods['setNumber'] = setNumberMock
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      return Promise.reject(new Error('writeContract exception'))
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
     try {
       await provider.makeContractSend(
         {
           method: 'setNumber',
           abi,
-          contractAddress: 'contract-address',
-          value: '1',
+          contractAddress: account,
+          value: 1n,
         },
         [1, 'arg2', 'arg3'],
       )
       fail()
-    } catch (err) {
-      expect(err.message).toEqual('method send error')
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('writeContract exception')
     }
   })
 
-  test('Should wait for transaction confirmation', async () => {
+  test('Should reject if waitForTransactionReceipt throws', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([account])
+        }),
+      )
+      return promi
+    })
+    const simulateContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve({request: 'simulate-write'})
+        }),
+      )
+      return promi
+    })
+    const writeContractMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve('tx-hash')
+        }),
+      )
+      return promi
+    })
+    const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
+      return Promise.reject(new Error('waitForTransactionReceipt exception'))
+    })
+    walletClient.getAddresses = getAddressMock
+    walletClient.writeContract = writeContractMock
+    publicClient.simulateContract = simulateContractMock
+    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    try {
+      await provider.makeContractSend(
+        {
+          method: 'setNumber',
+          abi,
+          contractAddress: account,
+          value: 1n,
+        },
+        [1, 'arg2', 'arg3'],
+      )
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('waitForTransactionReceipt exception')
+    }
+  })
+
+  /**
+   * @deprecated Now using https://viem.sh/docs/actions/public/waitForTransactionReceipt.html
+   */
+  test('Should wait for transaction confirmation', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
     const waitForConfirmationSpy = jest
-      .spyOn(provider['_web3'].eth, 'getTransactionReceipt')
+      .spyOn(publicClient, 'getTransactionReceipt')
       .mockRejectedValueOnce(new Error('getTransactionReceipt error'))
       .mockResolvedValueOnce(receiptWithFalseStatus as TransactionReceipt)
       .mockResolvedValue(receiptWithTrueStatus as TransactionReceipt)
@@ -547,72 +942,201 @@ describe('EVM provider', () => {
     expect(ret).toBe('0x5d65fa769234d6eef32baaeeb267dd1b3b8e0ff2e04a0861e2d36af26d631046')
   })
 
-  test('Should monitor a cross chain operation', async () => {
-    let operationQueuedObject = null,
-      operationExecutedObject = null,
-      operationCancelledObject = null
+  test('Should return the latest block number', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    const clientGetBlockMock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1333n }))
+    const interimGetBlockMock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1334n }))
+    publicClient.getBlock = clientGetBlockMock
+    provider['_interimClient'].getBlock = interimGetBlockMock
+    const ret = await provider.getLatestBlockNumber()
+    expect(clientGetBlockMock).toHaveBeenCalledTimes(1)
+    expect(interimGetBlockMock).toHaveBeenCalledTimes(0)
+    expect(ret).toBe(1333n)
+  })
+
+  test('Should return the latest block number on interim chain', async () => {
+    const provider = new pTokensEvmProvider(publicClient)
+    const clientGetBlockMock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1333n }))
+    const interimGetBlockMock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1334n }))
+    publicClient.getBlock = clientGetBlockMock
+    provider['_interimClient'].getBlock = interimGetBlockMock
+    const ret = await provider.getLatestBlockNumber(true)
+    expect(clientGetBlockMock).toHaveBeenCalledTimes(0)
+    expect(interimGetBlockMock).toHaveBeenCalledTimes(1)
+    expect(ret).toBe(1334n)
+  })
+
+  test('Should return a operationQueued log', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const spy = jest
+    const eventName = utils.EVENT_NAMES.OPERATION_QUEUED
+    const retLog = logs[1]
+    const getLogsMock = jest
       .fn()
       .mockRejectedValueOnce(new Error('getPastLogs error'))
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([logs[0], logs[1]])
-      .mockResolvedValueOnce([logs[2]])
+      .mockResolvedValueOnce([retLog])
       .mockResolvedValue([])
-    provider['_web3']['eth'].getBlock = jest.fn().mockImplementation(() => Promise.resolve({ number: BigInt(1333) }))
-    provider['_web3']['eth'].getPastLogs = spy
+    publicClient.getLogs = getLogsMock
+    const ret = await provider['_pollForHubOperation'](
+      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+      eventName,
+      48606850n,
+      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      false,
+    )
+    expect(ret).toBe(retLog)
+    expect(getLogsMock).toHaveBeenCalledTimes(3)
+  })
+
+  test('Should return a interim operationQueued log', async () => {
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const eventName = utils.EVENT_NAMES.OPERATION_QUEUED
+    const retLog = logs[1]
+    const getLogsMock = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('getPastLogs error'))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([retLog])
+      .mockResolvedValue([])
+    provider['_interimClient'].getLogs = getLogsMock
+    const ret = await provider['_pollForHubOperation'](
+      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+      eventName,
+      48606850n,
+      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      true,
+    )
+    expect(ret).toBe(retLog)
+    expect(getLogsMock).toHaveBeenCalledTimes(3)
+  })
+
+  test('Should return a operationExecuted log', async () => {
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const eventName = utils.EVENT_NAMES.OPERATION_EXECUTED
+    const retLog = logs[2]
+    const getLogsMock = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('getPastLogs error'))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([retLog])
+      .mockResolvedValue([])
+    publicClient.getLogs = getLogsMock
+    const ret = await provider['_pollForHubOperation'](
+      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+      eventName,
+      48606850n,
+      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      false,
+    )
+    expect(ret).toBe(retLog)
+    expect(getLogsMock).toHaveBeenCalledTimes(3)
+  })
+
+  test('Should return a operationCanceled log', async () => {
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const eventName = utils.EVENT_NAMES.OPERATION_CANCELLED
+    const retLog = logs[7]
+    const getLogsMock = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('getPastLogs error'))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([retLog])
+      .mockResolvedValue([])
+    publicClient.getLogs = getLogsMock
+    const ret = await provider['_pollForHubOperation'](
+      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+      eventName,
+      48634151n,
+      '0xc3e33a15fb36d4c813c32d85e8005baf94b37d032c9830f00009aa536966e5b3',
+      false,
+    )
+    expect(ret).toBe(retLog)
+    expect(getLogsMock).toHaveBeenCalledTimes(3)
+  })
+
+  test('Should monitor a cross chain operation', async () => {
+    let operationQueuedObject = null,
+      operationExecutedObject = null,
+      operationCancelledObject = null,
+      interimOperationQueuedObject = null,
+      interimOperationExecutedObject = null
+    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const getLogsMock = jest
+      .fn()
+      .mockResolvedValueOnce(logs[1])
+      .mockResolvedValueOnce(logs[2])
+      .mockResolvedValueOnce(logs[3])
+      .mockResolvedValueOnce(logs[4])
+    publicClient.getBlock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1300n }))
+    provider['_interimClient'].getBlock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1400n }))
+    provider['_interimClient'].waitForTransactionReceipt = jest.fn().mockImplementation(() => Promise.resolve(interimOperationExecutedReceipt))
+    provider['_pollForHubOperation'] = getLogsMock
     const ret = await provider
       .monitorCrossChainOperations(
-        '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-        '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
+        '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
+        '0xb794f5ea0ba39494ce839613fffba74279579268',
+        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
       )
+      .on('interimOperationQueued', (_obj) => {
+        interimOperationQueuedObject = _obj
+      })
+      .on('interimOperationExecutedObject', (_obj) => {
+        interimOperationExecutedObject = _obj
+      })
       .on('operationQueued', (_obj) => {
         operationQueuedObject = _obj
       })
       .on('operationExecuted', (_obj) => {
         operationExecutedObject = _obj
       })
-      .on('operationCancelled', (_obj) => {
-        operationCancelledObject = _obj
-      })
-    expect(spy).toHaveBeenCalledTimes(4)
-    expect(spy).toHaveBeenNthCalledWith(1, {
-      address: '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-      fromBlock: 333n,
-      topics: ['0xd1a85d51ecfea5edd75f97fcf615b22c6f56eaf8f0487db9fadfbe661689b9af'],
-    })
-    expect(spy).toHaveBeenNthCalledWith(2, {
-      address: '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-      fromBlock: 333n,
-      topics: ['0xd1a85d51ecfea5edd75f97fcf615b22c6f56eaf8f0487db9fadfbe661689b9af'],
-    })
-    expect(spy).toHaveBeenNthCalledWith(3, {
-      address: '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-      fromBlock: 333n,
-      topics: ['0xd1a85d51ecfea5edd75f97fcf615b22c6f56eaf8f0487db9fadfbe661689b9af'],
-    })
-    expect(spy).toHaveBeenNthCalledWith(4, {
-      address: '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-      fromBlock: 333n,
-      topics: ['0xfb83c807750a326c5845536dc89b4d2da9f1f5e0df344e9f69f27c84f4d7d726'],
-    })
-    expect(ret).toStrictEqual('0x88174f8b1c6715fee676c48d95d9ad6b126d008244c2ab3b28094a1e8267f547')
-    expect(operationQueuedObject).toStrictEqual('0xe03f1eb68ca2c13c4b2d08abf4d6154c2846cb88a52333fd3c8128587ad0cd34')
-    expect(operationExecutedObject).toStrictEqual('0x88174f8b1c6715fee676c48d95d9ad6b126d008244c2ab3b28094a1e8267f547')
+    expect(getLogsMock).toHaveBeenCalledTimes(4)
+    expect(getLogsMock).toHaveBeenNthCalledWith(1, 
+      '0xb794f5ea0ba39494ce839613fffba74279579268',
+      utils.EVENT_NAMES.OPERATION_QUEUED,
+      400n,
+      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      true,
+    )
+    expect(getLogsMock).toHaveBeenNthCalledWith(2, 
+      '0xb794f5ea0ba39494ce839613fffba74279579268',
+      utils.EVENT_NAMES.OPERATION_EXECUTED,
+      400n,
+      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      true,
+    )
+    expect(getLogsMock).toHaveBeenNthCalledWith(3,
+      '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
+      utils.EVENT_NAMES.OPERATION_QUEUED,
+      300n,
+      '0x8857f3f0dea6951d1841a67eba1df2c3cdfd1910fb7e4c2e6636bc7e98aaf7a4',
+      false,
+    )
+    expect(getLogsMock).toHaveBeenNthCalledWith(4, 
+      '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
+      utils.EVENT_NAMES.OPERATION_EXECUTED,
+      300n,
+      '0x8857f3f0dea6951d1841a67eba1df2c3cdfd1910fb7e4c2e6636bc7e98aaf7a4',
+      false,
+    )
+    expect(ret).toStrictEqual(logs[4].transactionHash.toString())
+    expect(operationQueuedObject).toStrictEqual('0x88049b63a7f47c6d43bf8d7bbdb9236c8554a026b88c4a1fcbfcbc2d160dc26d')
+    expect(operationExecutedObject).toStrictEqual('0xaab2b8acb0901d14bda8a74b9ea53443209d8868a0a93aef5f65842da5a7f961')
     expect(operationCancelledObject).toStrictEqual(null)
-  })
+  }, 20000)
 
   test('Should reject when an error occurs monitoring a cross chain operation', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    provider['_web3']['eth'].getBlock = jest.fn().mockRejectedValue(new Error('error'))
+    provider['_interimClient'].getBlock = jest.fn().mockRejectedValue(new Error('error'))
     try {
       await provider.monitorCrossChainOperations(
-        '0xCE22B9ba226B5d851d86c983656a9008FeC25193',
-        '0xc6cc8381b3a70dc38c587d6c5518d72edb05b4040acbd4251fe6b67acff7f986',
+        '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
+        '0xb794f5ea0ba39494ce839613fffba74279579268',
+        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
       )
       fail()
-    } catch (err) {
-      expect(err.message).toStrictEqual('error')
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toStrictEqual('error')
     }
   })
 })
