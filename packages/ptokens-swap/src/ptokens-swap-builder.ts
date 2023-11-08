@@ -1,9 +1,12 @@
 import BigNumber from 'bignumber.js'
+import { factoryAbi, pTokensEvmProvider } from 'ptokens-assets-evm'
+import { FactoryAddress, INTERIM_CHAIN_NETWORK_ID, NetworkId } from 'ptokens-constants'
 import { pTokensAsset } from 'ptokens-entities'
 import { validators } from 'ptokens-helpers'
+import { createPublicClient, http } from 'viem'
+import { polygon } from 'viem/chains'
 
 import { pTokensSwap, DestinationInfo } from './ptokens-swap'
-import { NetworkId } from 'ptokens-constants'
 
 export class pTokensSwapBuilder {
   private _sourceAsset: pTokensAsset
@@ -11,7 +14,9 @@ export class pTokensSwapBuilder {
   private _amount: BigNumber
   private _networkFees: BigNumber
   private _forwardNetworkFees: BigNumber
-  private _interim: NetworkId
+  private _interimNetworkId: NetworkId
+  private _interimProvider: pTokensEvmProvider
+  private _interimHubAddress: `0x${string}`
 
   /**
    * Return the pTokensAsset set as source asset for the swap.
@@ -126,7 +131,46 @@ export class pTokensSwapBuilder {
    * @returns The same builder. This allows methods chaining.
    */
   setInterimChain(_networkId: NetworkId) {
-    this._interim = _networkId
+    this._interimNetworkId = _networkId
+    return this
+  }
+
+  /**
+   * Set a Interim provider.
+   * @param provider - A pTokensEvmProvider.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setInterimProvider(interimProvider: pTokensEvmProvider): this {
+    this._interimProvider = interimProvider
+    return this
+  }
+
+  /**
+   * Get interim chian hub address.
+   * @returns The interim hub address.
+   */
+  async getInterimHubAddress(networkId: NetworkId = INTERIM_CHAIN_NETWORK_ID): Promise<`0x${string}`> {
+    try {
+      const interimFactoryAddress = FactoryAddress.get(networkId)
+      if (!interimFactoryAddress) throw new Error('Could not retreive interim Factory address')
+      return await this._interimProvider.makeContractCall<`0x${string}`, []>({
+        contractAddress: interimFactoryAddress,
+        method: 'hub',
+        abi: factoryAbi,
+      })
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      throw new Error(_err.message)
+    }
+  }
+
+  /**
+   * Set the Interim Hub address.
+   * @param interimHubAddress - A EVM address.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setInterimHubAddress(interimHubAddress: `0x${string}`): this {
+    this._interimHubAddress = interimHubAddress
     return this
   }
 
@@ -138,13 +182,30 @@ export class pTokensSwapBuilder {
    * Build a pTokensSwap object from the parameters set when interacting with the builder.
    * @returns - An immutable pTokensSwap object.
    */
-  build(): pTokensSwap {
+  async build(): Promise<pTokensSwap> {
     if (!this._sourceAsset) throw new Error('Missing source asset')
     if (this._destinationAssets.length === 0) throw new Error('Missing destination assets')
     if (!this._amount) throw new Error('Missing amount')
     if (!this.isValidSwap()) throw new Error('Invalid swap')
-    if (!this._interim) this.setInterimChain(NetworkId.PolygonMainnet)
-    const ret = new pTokensSwap(this.sourceAsset, this._destinationAssets, this._amount, this._interim)
-    return ret
+    if (!this._interimNetworkId) this.setInterimChain(INTERIM_CHAIN_NETWORK_ID)
+    if (!this._interimProvider)
+      this.setInterimProvider(
+        new pTokensEvmProvider(
+          createPublicClient({
+            chain: polygon,
+            transport: http(),
+          }),
+        ),
+      )
+    if (!this._interimHubAddress) this.setInterimHubAddress(await this.getInterimHubAddress())
+
+    return new pTokensSwap(
+      this.sourceAsset,
+      this._destinationAssets,
+      this._amount,
+      this._interimHubAddress,
+      this._interimNetworkId,
+      this._interimProvider,
+    )
   }
 }
