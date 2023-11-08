@@ -37,6 +37,7 @@ describe('EVM asset', () => {
       expect(asset.blockchain).toStrictEqual(Blockchain.Gnosis)
       expect(asset.network).toStrictEqual(Network.Mainnet)
       expect(asset.networkId).toStrictEqual(NetworkId.GnosisMainnet)
+      expect(asset.provider['_publicClient']).toStrictEqual(publicClient)
       expect(asset.weight).toEqual(1)
     })
 
@@ -139,11 +140,11 @@ describe('EVM asset', () => {
         })
       expect(txHashBroadcasted).toEqual({ txHash: 'tx-hash' })
       expect(swapResultConfirmed).toEqual({
-        operationId: '0x0decc3b04f997633384503d6cd7a9f818d2ce2df6a994c566d1de32662e8630f',
+        operationId: '0xbf4531f01b1d4f3bf8441f279f029060e4502285cfe033f36c6c9b8366232311',
         txHash: '0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308',
       })
       expect(ret).toEqual({
-        operationId: '0x0decc3b04f997633384503d6cd7a9f818d2ce2df6a994c566d1de32662e8630f',
+        operationId: '0xbf4531f01b1d4f3bf8441f279f029060e4502285cfe033f36c6c9b8366232311',
         txHash: '0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308',
       })
       expect(makeContractSendMock).toHaveBeenNthCalledWith(
@@ -216,7 +217,7 @@ describe('EVM asset', () => {
       const provider = new pTokensEvmProvider(publicClient, walletClient)
       const monitorCrossChainOperationsSpy = jest
         .spyOn(provider, 'monitorCrossChainOperations')
-        .mockResolvedValue('tx-hash')
+        .mockResolvedValue('0x-tx-hash')
       const asset = new pTokensEvmAsset({
         provider: provider,
         assetInfo: {
@@ -234,8 +235,8 @@ describe('EVM asset', () => {
         hubAddress: 'hub-address',
         pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
       })
-      const ret = await asset['monitorCrossChainOperations']('operation-id', '0x6153ec976a5b3886caf3a88d8d994c4cec24203e')
-      expect(ret).toStrictEqual('tx-hash')
+      const ret = await asset['monitorCrossChainOperations']('operation-id')
+      expect(ret).toStrictEqual('0x-tx-hash')
       expect(monitorCrossChainOperationsSpy).toHaveBeenCalledTimes(1)
     })
   })

@@ -173,12 +173,12 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     _args: T | [] = [],
   ): Promise<R> {
     const { method, abi, contractAddress } = _options
-      return this._publicClient.readContract({
-        address: stringUtils.addHexPrefix(contractAddress),
-        abi: abi,
-        functionName: method,
-        args: _args,
-      }) as Promise<R>
+    return this._publicClient.readContract({
+      address: stringUtils.addHexPrefix(contractAddress),
+      abi: abi,
+      functionName: method,
+      args: _args,
+    }) as Promise<R>
   }
 
   /**
@@ -198,7 +198,18 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       }
     }, _pollingTime)
     if (!receipt) throw new Error('Polling function stopped unexpectedly. No receipt found')
-    return receipt.transactionHash.toString() // not clear why TransactionReceipt
+    return receipt.transactionHash.toString()
+  }
+
+  /**
+   * Wait for tx receipt.
+   * @param _txHash - Transcation hash of the searched receipt.
+   * @returns TransactionReceipt of _txHash.
+   */
+  async waitForTransactionReceipt(_txHash: `0x${string}`): Promise<TransactionReceipt> {
+    const receipt: TransactionReceipt = await this._publicClient.waitForTransactionReceipt({ hash: _txHash})
+    if (!receipt) throw new Error('No receipt found')
+    return receipt
   }
 
   protected async _pollForHubOperation(
@@ -214,14 +225,14 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       try {
         log = undefined
         const logs = await this._publicClient.getLogs({
-            fromBlock: _fromBlock,
-            address: stringUtils.addHexPrefix(_hubAddress),
-            events: pNetworkHubAbi.filter((_fun) => _fun.type === 'event' && _fun.name === _eventName.toString()),
-          })
+          fromBlock: _fromBlock,
+          address: stringUtils.addHexPrefix(_hubAddress),
+          events: pNetworkHubAbi.filter((_fun) => _fun.type === 'event' && _fun.name === _eventName.toString()),
+        })
         log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
         if (log) return true
         return false
-      } catch (_err) {  
+      } catch (_err) {
         return false
       }
     }, _pollingTime)
@@ -230,7 +241,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
   }
 
   monitorCrossChainOperations(_hubAddress: string, _operationId: string) {
-    const promi = new PromiEvent<string>(
+    const promi = new PromiEvent<`0x${string}`>(
       (resolve, reject) =>
         (async () => {
           try {
@@ -262,7 +273,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               // }),
             ])
             if (!finalTxLog.transactionHash) throw new Error('Tx Log do not contain a transaction hash')
-            return resolve(finalTxLog.transactionHash.toString())
+            return resolve(finalTxLog.transactionHash)
           } catch (_err) {
             return reject(_err)
           }
