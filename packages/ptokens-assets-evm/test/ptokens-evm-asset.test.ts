@@ -18,12 +18,12 @@ describe('EVM asset', () => {
     test('Should create an EVM asset from constructor', () => {
       const asset = new pTokensEvmAsset({
         assetInfo: {
-          networkId: NetworkId.SepoliaTestnet,
+          networkId: NetworkId.GnosisMainnet,
           symbol: 'pSYM',
           assetTokenAddress: 'token-contract-address',
           decimals: 18,
           underlyingAssetDecimals: 18,
-          underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
+          underlyingAssetNetworkId: NetworkId.GnosisMainnet,
           underlyingAssetSymbol: 'SYM',
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
@@ -34,9 +34,9 @@ describe('EVM asset', () => {
         provider: new pTokensEvmProvider(publicClient),
       })
       expect(asset.symbol).toStrictEqual('pSYM')
-      expect(asset.blockchain).toStrictEqual(Blockchain.Sepolia)
-      expect(asset.network).toStrictEqual(Network.Testnet)
-      expect(asset.networkId).toStrictEqual(NetworkId.SepoliaTestnet)
+      expect(asset.blockchain).toStrictEqual(Blockchain.Gnosis)
+      expect(asset.network).toStrictEqual(Network.Mainnet)
+      expect(asset.networkId).toStrictEqual(NetworkId.GnosisMainnet)
       expect(asset.weight).toEqual(1)
     })
 
@@ -71,12 +71,12 @@ describe('EVM asset', () => {
     test('Should not call swap if provider is missing', async () => {
       const asset = new pTokensEvmAsset({
         assetInfo: {
-          networkId: NetworkId.SepoliaTestnet,
+          networkId: NetworkId.GnosisMainnet,
           symbol: 'pSYM',
           assetTokenAddress: 'token-contract-address',
           decimals: 18,
           underlyingAssetDecimals: 18,
-          underlyingAssetNetworkId: NetworkId.SepoliaTestnet,
+          underlyingAssetNetworkId: NetworkId.GnosisMainnet,
           underlyingAssetSymbol: 'SYM',
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
@@ -113,7 +113,7 @@ describe('EVM asset', () => {
       const asset = new pTokensEvmAsset({
         provider: provider,
         assetInfo: {
-          networkId: NetworkId.SepoliaTestnet,
+          networkId: NetworkId.GnosisMainnet,
           symbol: 'pSYM',
           assetTokenAddress: 'asset-token-address',
           decimals: 18,
@@ -183,7 +183,7 @@ describe('EVM asset', () => {
       const asset = new pTokensEvmAsset({
         provider: provider,
         assetInfo: {
-          networkId: NetworkId.SepoliaTestnet,
+          networkId: NetworkId.GnosisMainnet,
           symbol: 'pSYM',
           assetTokenAddress: 'asset-token-address',
           decimals: 18,
@@ -220,7 +220,7 @@ describe('EVM asset', () => {
       const asset = new pTokensEvmAsset({
         provider: provider,
         assetInfo: {
-          networkId: NetworkId.SepoliaTestnet,
+          networkId: NetworkId.GnosisMainnet,
           symbol: 'pSYM',
           assetTokenAddress: 'asset-token-address',
           decimals: 18,

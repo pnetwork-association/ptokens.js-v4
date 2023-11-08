@@ -170,7 +170,7 @@ describe('EVM asset', () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
     const builder = new pTokensEvmAssetBuilder(provider)
     try {
-      builder.setBlockchain(NetworkId.SepoliaTestnet)
+      builder.setBlockchain(NetworkId.GnosisMainnet)
       await builder.build()
       fail()
     } catch (_err) {

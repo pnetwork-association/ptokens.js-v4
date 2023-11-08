@@ -52,4 +52,4 @@ export const FactoryAddress = new Map<NetworkId, string>([
   [NetworkId.PolygonMainnet, '0x4650787da4A497496e514EcCFd6F888B7804ebBe'],
 ])
 
-export const INTERIM_NETWORK_ID = NetworkId.PolygonMainnet
+export const INTERIM_CHAIN_NETWORK_ID = NetworkId.PolygonMainnet
