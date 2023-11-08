@@ -1,6 +1,8 @@
 import PromiEvent from 'promievent'
 import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokensAssetProvider, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
+import { TransactionReceipt } from 'viem'
+import receipt from '../utils/userSend-receipt.json'
 
 export class pTokensProviderMock implements pTokensAssetProvider {
   /* istanbul ignore next */
@@ -17,6 +19,28 @@ export class pTokensProviderMock implements pTokensAssetProvider {
     )
     return promi
   }
+}
+
+export const mockedMonitorCrossChainOperations = (_hubAddress: string, _operationId: string): PromiEvent<`0x${string}`> => {
+  // eslint-disable-next-line no-unused-vars
+  const promi = new PromiEvent<`0x${string}`>((resolve) =>
+    setImmediate(() => {
+      promi.emit('operationQueued', '0x-interim-operation-queued-tx-hash')
+      promi.emit('operationExecuted', '0x-interim-operation-executed-tx-hash')
+      return resolve('0x-interim-operation-executed-tx-hash')
+    }),
+  )
+  return promi
+}
+
+export const mockedWaitForTransactionReceipt = (_txHash: string): Promise<TransactionReceipt> => {
+  const jsonReceipt = JSON.stringify(receipt)
+  const txReceipt = JSON.parse(jsonReceipt, (key, value) => {
+    if (key == 'blockNumber')
+      return BigInt(value)
+    return value
+  })
+  return Promise.resolve(txReceipt)
 }
 
 export type pTokenAssetMockConfig = pTokenAssetConfig & {
