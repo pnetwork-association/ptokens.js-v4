@@ -28,7 +28,7 @@ export const getViemChain = (networkId: NetworkId): Chain => {
     case NetworkId.PolygonMainnet: 
       return polygon
       break
-    default: throw new Error(`${networkId} is not supported as interim Chain, check ptokens-constants`)
+    default: throw new Error(`${networkId} is not supported by ptokens.js`)
   }
 }
 

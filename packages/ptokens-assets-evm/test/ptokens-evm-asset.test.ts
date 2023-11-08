@@ -39,6 +39,28 @@ describe('EVM asset', () => {
       expect(asset.networkId).toStrictEqual(NetworkId.SepoliaTestnet)
       expect(asset.weight).toEqual(1)
     })
+
+    test('Should add a walletClient', () => {
+      const asset = new pTokensEvmAsset({
+        assetInfo: {
+          networkId: NetworkId.GnosisMainnet,
+          symbol: 'pSYM',
+          assetTokenAddress: 'token-contract-address',
+          decimals: 18,
+          underlyingAssetDecimals: 18,
+          underlyingAssetNetworkId: NetworkId.GnosisMainnet,
+          underlyingAssetSymbol: 'SYM',
+          underlyingAssetName: 'Symbol',
+          underlyingAssetTokenAddress: 'underlying-asset-token-address',
+        },
+        factoryAddress: 'factory-address',
+        hubAddress: 'hub-address',
+        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        provider: new pTokensEvmProvider(publicClient),
+      })
+      asset.setWalletClient(walletClient)
+      expect(asset.provider['_walletClient']).toStrictEqual(walletClient)
+    })
   })
 
   describe('swap', () => {
@@ -110,11 +132,9 @@ describe('EVM asset', () => {
       // promiEvent works weird with async await syntax -> TODO avoid async await with promiEvent
       const ret = await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
         .on('txBroadcasted', (_txHash) => {
-          console.log('_txHash', _txHash)
           txHashBroadcasted = _txHash
         })
         .on('txConfirmed', (_swapResult) => {
-          console.log('_swapResult', _swapResult)
           swapResultConfirmed = _swapResult
         })
       expect(txHashBroadcasted).toEqual({ txHash: 'tx-hash' })

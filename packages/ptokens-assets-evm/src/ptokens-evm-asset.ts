@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
-import { BlockchainType, NetworkId } from 'ptokens-constants'
+import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 import { TransactionReceipt, WalletClient } from 'viem'
 
@@ -32,7 +32,7 @@ export class pTokensEvmAsset extends pTokensAsset {
   }
 
   /**
-   * Set a walletClient to the existing provider.
+   * Set a walletProvider.
    * @param _walletClient - A viem walletClient.
    * @returns The same builder. This allows methods chaining.
    */
@@ -83,7 +83,6 @@ export class pTokensEvmAsset extends pTokensAsset {
               .once('txBroadcasted', (_hash: string) => {
                 promi.emit('txBroadcasted', { txHash: _hash })
               })
-              .then()
             const ret = {
               txHash: txReceipt.transactionHash.toString(),
               operationId: getOperationIdFromTransactionReceipt(this.networkId, txReceipt),
@@ -98,7 +97,7 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  protected monitorCrossChainOperations(_operationId: string, _interimHubAddress: string): PromiEvent<string> {
-    return this.provider.monitorCrossChainOperations(this.hubAddress, _interimHubAddress, _operationId)
+  protected monitorCrossChainOperations(_operationId: string): PromiEvent<string> {
+    return this.provider.monitorCrossChainOperations(this.hubAddress, _operationId)
   }
 }

@@ -7,9 +7,7 @@ export abstract class pTokensAssetProvider {
    * @param _pollingTime - The polling period.
    * @returns A Promise that resolve with the same transaction hash __txHash_.
    */
-  abstract waitForTransactionConfirmation(_txHash: string, _pollingTime?: number): Promise<string>
+  abstract waitForTransactionConfirmation(_txHash: string): Promise<string>
 
-  abstract monitorCrossChainOperations(_hubAddress: string, _interimHubAddress: string, _operationId: string): PromiEvent<string>
-
-  abstract getInterimHubAddress(): Promise<string>
+  abstract monitorCrossChainOperations(_hubAddress: string, _operationId: string): PromiEvent<string>
 }
