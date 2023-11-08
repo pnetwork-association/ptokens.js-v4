@@ -17,12 +17,11 @@ describe('ethereum utilities', () => {
 
   test('Should throw if NetworkId is not supported', () => {
     try {
-      const chain = utils.getViemChain('mockedNetworkId' as NetworkId)
-      console.log(chain)
+      void utils.getViemChain('mockedNetworkId' as NetworkId)
       fail()
     } catch (_err) {
       if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toEqual('mockedNetworkId is not supported as interim Chain, check ptokens-constants')
+      expect(_err.message).toEqual('mockedNetworkId is not supported by ptokens.js')
     }
   })
 
