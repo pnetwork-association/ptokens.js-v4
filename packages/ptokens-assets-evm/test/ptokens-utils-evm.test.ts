@@ -1,10 +1,12 @@
 import BigNumber from 'bignumber.js'
+import { NetworkId } from 'ptokens-constants'
 import { stringUtils } from 'ptokens-helpers'
 import { Log } from 'viem'
-import { NetworkId } from 'ptokens-constants'
 import { polygon } from 'viem/chains'
 
+import PNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 import * as utils from '../src/lib'
+
 import logs from './utils/logs.json'
 import { publicClient } from './utils/viem-clients'
 
@@ -61,21 +63,33 @@ describe('ethereum utilities', () => {
   })
 
   test('Should get operation ID from log', async () => {
-    const res_1 = await Promise.allSettled(
-      logs.slice(0, 3).map(
-        (_log) => new Promise((_resolve) => _resolve(utils.getOperationIdFromLog(_log as unknown as Log<bigint>, '0xf9b459a1' as NetworkId))),
-      ),
+    const res = await Promise.allSettled(
+      logs
+        .slice(0, 3)
+        .concat(logs.slice(-3))
+        .map(
+          (_log) =>
+            new Promise((_resolve) =>
+              _resolve(utils.getOperationIdFromLog(_log as unknown as Log<bigint>, '0xf9b459a1' as NetworkId)),
+            ),
+        ),
     )
-    const res_2 = await Promise.allSettled(
-      logs.slice(-3).map(
-        (_log) => new Promise((_resolve) => _resolve(utils.getOperationIdFromLog(_log as unknown as Log<bigint>, '0xf9b459a1' as NetworkId))),
-      ),
-    )
+    const expectedRes = Array(3)
+      .fill('0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca')
+      .concat(Array(3).fill('0xc3e33a15fb36d4c813c32d85e8005baf94b37d032c9830f00009aa536966e5b3'))
     expect(
-      res_1.map((_obj) => ('value' in _obj ? _obj.value : 'reason' in _obj ? (_obj.reason.message as string) : null)),
-    ).toStrictEqual(Array(res_1.length).fill('0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca'))
-    expect(
-      res_2.map((_obj) => ('value' in _obj ? _obj.value : 'reason' in _obj ? (_obj.reason.message as string) : null)),
-    ).toStrictEqual(Array(res_2.length).fill('0xc3e33a15fb36d4c813c32d85e8005baf94b37d032c9830f00009aa536966e5b3'))
+      res.map((_obj) => ('value' in _obj ? _obj.value : 'reason' in _obj ? (_obj.reason.message as string) : null)),
+    ).toStrictEqual(expectedRes)
+  })
+
+  test('Abi operation struct is consistent', () => {
+    const operationQueuedStruct = PNetworkHubAbi.find((_) => _.type === 'event' && _.name === 'OperationQueued')?.inputs
+    const operationExecutedStruct = PNetworkHubAbi.find((_) => _.type === 'event' && _.name === 'OperationExecuted')
+      ?.inputs
+    const operationCanceledFinalizedStruct = PNetworkHubAbi.find(
+      (_) => _.type === 'event' && _.name === 'OperationCancelFinalized',
+    )?.inputs
+    expect(operationQueuedStruct).toStrictEqual(operationExecutedStruct)
+    expect(operationExecutedStruct).toStrictEqual(operationCanceledFinalizedStruct)
   })
 })
