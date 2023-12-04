@@ -1,12 +1,18 @@
 import BigNumber from 'bignumber.js'
-import { NetworkId } from 'ptokens-constants'
 import * as ptokensAssetEvm from 'ptokens-assets-evm'
+import { NetworkId } from 'ptokens-constants'
 import { PublicClient, TransactionReceipt } from 'viem'
 
 import { pTokensSwap, pTokensSwapBuilder } from '../src/index'
-import { mockedMonitorCrossChainOperations, mockedWaitForTransactionReceipt, pTokenAssetFailingMock, pTokenAssetMock, pTokensProviderMock } from './mocks/ptoken-asset'
-import interimExecuteReceipt from './utils/interimOperationExecute-receipt.json'
-import receipt from './utils/userSend-receipt.json'
+
+import {
+  mockedMonitorCrossChainOperations,
+  pTokenAssetFailingMock,
+  pTokenAssetMock,
+  pTokensProviderMock,
+} from './mocks/ptoken-asset'
+import interimExecuteReceipt from './utils/interim-operation-execute-receipt.json'
+import receipt from './utils/user-send-receipt.json'
 import { getBigIntJson } from './utils/utils'
 
 jest.setTimeout(10000)
@@ -23,6 +29,7 @@ describe('pTokensSwap', () => {
         symbol: 'SOURCE',
         assetTokenAddress: 'token-contract-address',
         decimals: 6,
+        isNative: true,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.GnosisMainnet,
         underlyingAssetSymbol: 'SYM',
@@ -40,6 +47,7 @@ describe('pTokensSwap', () => {
         symbol: 'DESTINATION',
         assetTokenAddress: 'token-contract-address',
         decimals: 6,
+        isNative: true,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.GnosisMainnet,
         underlyingAssetSymbol: 'SYM',
@@ -53,7 +61,7 @@ describe('pTokensSwap', () => {
     })
     const interimProvider = new ptokensAssetEvm.pTokensEvmProvider({} as PublicClient)
     jest
-      .spyOn(interimProvider, 'waitForTransactionReceipt')
+      .spyOn(interimProvider, 'waitForTransactionConfirmation')
       .mockResolvedValueOnce(getBigIntJson(interimExecuteReceipt) as TransactionReceipt)
       .mockResolvedValue(getBigIntJson(receipt) as TransactionReceipt)
     interimProvider['monitorCrossChainOperations'] = mockedMonitorCrossChainOperations
@@ -70,7 +78,6 @@ describe('pTokensSwap', () => {
       ],
       BigNumber(10),
       '0x4049a2FB47ffaBC2Ec66d2183b4f3206a0312677',
-      NetworkId.PolygonMainnet,
       interimProvider,
     )
     const promi = swap.execute()
@@ -80,7 +87,12 @@ describe('pTokensSwap', () => {
       interimOperationExecuted = false,
       operationQueued = false,
       operationExecuted = false
-    let inputTxBroadcastedObj, inputTxConfirmedObj, interimOperationQueuedObj, interimOperationExecutedObj, outputTxQueuedObj, outputTxExecutedObj
+    let inputTxBroadcastedObj,
+      inputTxConfirmedObj,
+      interimOperationQueuedObj,
+      interimOperationExecutedObj,
+      outputTxQueuedObj,
+      outputTxExecutedObj
     const ret = await promi
       .on('inputTxBroadcasted', (obj) => {
         inputTxBroadcastedObj = obj
@@ -121,14 +133,29 @@ describe('pTokensSwap', () => {
     expect(inputTxConfirmed).toBeTruthy()
     expect(inputTxConfirmedObj).toStrictEqual({ operationId: 'operation-id', txHash: 'originating-tx-hash' })
     expect(interimOperationQueued).toBeTruthy()
-    expect(interimOperationQueuedObj).toStrictEqual({ operationId: 'operation-id', txHash: '0x-interim-operation-queued-tx-hash' })
+    expect(interimOperationQueuedObj).toStrictEqual({
+      operationId: 'operation-id',
+      txHash: 'interim-operation-queued-tx-hash',
+    })
     expect(interimOperationExecuted).toBeTruthy()
-    expect(interimOperationExecutedObj).toStrictEqual({ operationId: 'operation-id', txHash: '0x-interim-operation-executed-tx-hash' })
+    expect(interimOperationExecutedObj).toStrictEqual({
+      operationId: 'operation-id',
+      txHash: 'interim-operation-executed-tx-hash',
+    })
     expect(operationQueued).toBeTruthy()
-    expect(outputTxQueuedObj).toStrictEqual({ operationId: '0x535e578e7cad6798d9d55391defd9407173f83958eaa3844809bf8ec91c453f0', txHash: 'operation-queued-tx-hash' })
+    expect(outputTxQueuedObj).toStrictEqual({
+      operationId: '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      txHash: 'operation-queued-tx-hash',
+    })
     expect(operationExecuted).toBeTruthy()
-    expect(outputTxExecutedObj).toStrictEqual({ operationId: '0x535e578e7cad6798d9d55391defd9407173f83958eaa3844809bf8ec91c453f0', txHash: 'operation-executed-tx-hash' })
-    expect(ret).toStrictEqual({ operationId: '0x535e578e7cad6798d9d55391defd9407173f83958eaa3844809bf8ec91c453f0', txHash: 'operation-executed-tx-hash' })
+    expect(outputTxExecutedObj).toStrictEqual({
+      operationId: '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      txHash: 'operation-executed-tx-hash',
+    })
+    expect(ret).toStrictEqual({
+      operationId: '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      txHash: 'operation-executed-tx-hash',
+    })
   })
 
   test('Should swap asset with user data', async () => {
@@ -139,6 +166,7 @@ describe('pTokensSwap', () => {
         symbol: 'SOURCE',
         assetTokenAddress: 'token-contract-address',
         decimals: 6,
+        isNative: true,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.GnosisMainnet,
         underlyingAssetSymbol: 'SYM',
@@ -156,6 +184,7 @@ describe('pTokensSwap', () => {
         symbol: 'DESTINATION',
         assetTokenAddress: 'token-contract-address',
         decimals: 6,
+        isNative: true,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.GnosisMainnet,
         underlyingAssetSymbol: 'SYM',
@@ -169,7 +198,7 @@ describe('pTokensSwap', () => {
     })
     const interimProvider = new ptokensAssetEvm.pTokensEvmProvider({} as PublicClient)
     jest
-      .spyOn(interimProvider, 'waitForTransactionReceipt')
+      .spyOn(interimProvider, 'waitForTransactionConfirmation')
       .mockResolvedValueOnce(getBigIntJson(interimExecuteReceipt) as TransactionReceipt)
       .mockResolvedValue(getBigIntJson(receipt) as TransactionReceipt)
     interimProvider['monitorCrossChainOperations'] = mockedMonitorCrossChainOperations
@@ -193,32 +222,37 @@ describe('pTokensSwap', () => {
       interimOperationExecuted = false,
       operationQueued = false,
       operationExecuted = false
-    let inputTxBroadcastedObj, inputTxConfirmedObj, interimOperationQueuedObj, interimOperationExecutedObj, outputTxQueuedObj, outputTxExecutedObj
+    let inputTxBroadcastedObj,
+      inputTxConfirmedObj,
+      interimOperationQueuedObj,
+      interimOperationExecutedObj,
+      outputTxQueuedObj,
+      outputTxExecutedObj
     const ret = await promi
-    .on('inputTxBroadcasted', (obj) => {
-      inputTxBroadcastedObj = obj
-      inputTxBroadcasted = true
-    })
-    .on('inputTxConfirmed', (obj) => {
-      inputTxConfirmedObj = obj
-      inputTxConfirmed = true
-    })
-    .on('interimOperationQueued', (obj) => {
-      interimOperationQueuedObj = obj
-      interimOperationQueued = true
-    })
-    .on('interimOperationExecuted', (obj) => {
-      interimOperationExecutedObj = obj
-      interimOperationExecuted = true
-    })
-    .on('operationQueued', (obj) => {
-      outputTxQueuedObj = obj
-      operationQueued = true
-    })
-    .on('operationExecuted', (obj) => {
-      outputTxExecutedObj = obj
-      operationExecuted = true
-    })
+      .on('inputTxBroadcasted', (obj) => {
+        inputTxBroadcastedObj = obj
+        inputTxBroadcasted = true
+      })
+      .on('inputTxConfirmed', (obj) => {
+        inputTxConfirmedObj = obj
+        inputTxConfirmed = true
+      })
+      .on('interimOperationQueued', (obj) => {
+        interimOperationQueuedObj = obj
+        interimOperationQueued = true
+      })
+      .on('interimOperationExecuted', (obj) => {
+        interimOperationExecutedObj = obj
+        interimOperationExecuted = true
+      })
+      .on('operationQueued', (obj) => {
+        outputTxQueuedObj = obj
+        operationQueued = true
+      })
+      .on('operationExecuted', (obj) => {
+        outputTxExecutedObj = obj
+        operationExecuted = true
+      })
     expect(swapSpy).toHaveBeenNthCalledWith(
       1,
       BigNumber(123.456),
@@ -234,25 +268,40 @@ describe('pTokensSwap', () => {
     expect(inputTxConfirmed).toBeTruthy()
     expect(inputTxConfirmedObj).toStrictEqual({ operationId: 'operation-id', txHash: 'originating-tx-hash' })
     expect(interimOperationQueued).toBeTruthy()
-    expect(interimOperationQueuedObj).toStrictEqual({ operationId: 'operation-id', txHash: '0x-interim-operation-queued-tx-hash' })
+    expect(interimOperationQueuedObj).toStrictEqual({
+      operationId: 'operation-id',
+      txHash: 'interim-operation-queued-tx-hash',
+    })
     expect(interimOperationExecuted).toBeTruthy()
-    expect(interimOperationExecutedObj).toStrictEqual({ operationId: 'operation-id', txHash: '0x-interim-operation-executed-tx-hash' })
+    expect(interimOperationExecutedObj).toStrictEqual({
+      operationId: 'operation-id',
+      txHash: 'interim-operation-executed-tx-hash',
+    })
     expect(operationQueued).toBeTruthy()
-    expect(outputTxQueuedObj).toStrictEqual({ operationId: '0x535e578e7cad6798d9d55391defd9407173f83958eaa3844809bf8ec91c453f0', txHash: 'operation-queued-tx-hash' })
+    expect(outputTxQueuedObj).toStrictEqual({
+      operationId: '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      txHash: 'operation-queued-tx-hash',
+    })
     expect(operationExecuted).toBeTruthy()
-    expect(outputTxExecutedObj).toStrictEqual({ operationId: '0x535e578e7cad6798d9d55391defd9407173f83958eaa3844809bf8ec91c453f0', txHash: 'operation-executed-tx-hash' })
-    expect(ret).toStrictEqual({ operationId: '0x535e578e7cad6798d9d55391defd9407173f83958eaa3844809bf8ec91c453f0', txHash: 'operation-executed-tx-hash' })
+    expect(outputTxExecutedObj).toStrictEqual({
+      operationId: '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      txHash: 'operation-executed-tx-hash',
+    })
+    expect(ret).toStrictEqual({
+      operationId: '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      txHash: 'operation-executed-tx-hash',
+    })
   })
 
   test('Should reject if swap fails', async () => {
     const builder = new pTokensSwapBuilder()
-    const sourceAssetProvider = new pTokensProviderMock()
     const sourceAsset = new pTokenAssetFailingMock({
       assetInfo: {
         networkId: NetworkId.GnosisMainnet,
         symbol: 'SRC',
         assetTokenAddress: 'token-contract-address',
         decimals: 6,
+        isNative: true,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.GnosisMainnet,
         underlyingAssetSymbol: 'SYM',
@@ -270,6 +319,7 @@ describe('pTokensSwap', () => {
         symbol: 'DST',
         assetTokenAddress: 'token-contract-address',
         decimals: 6,
+        isNative: true,
         underlyingAssetDecimals: 18,
         underlyingAssetNetworkId: NetworkId.GnosisMainnet,
         underlyingAssetSymbol: 'SYM',

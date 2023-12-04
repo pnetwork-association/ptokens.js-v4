@@ -1,8 +1,10 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
-import { getOperationIdFromTransactionReceipt, pTokensEvmProvider } from 'ptokens-assets-evm'
-import { INTERIM_CHAIN_NETWORK_ID, NetworkId } from 'ptokens-constants'
+import { getOperationIdFromLog } from 'ptokens-assets-evm'
+import { INTERIM_CHAIN_NETWORK_ID } from 'ptokens-constants'
 import { SwapResult, pTokensAsset } from 'ptokens-entities'
+
+import { interimProvider } from './lib'
 
 export type DestinationInfo = {
   asset: pTokensAsset
@@ -18,9 +20,8 @@ export class pTokensSwap {
   private _destinationAssets: DestinationInfo[]
   private _amount: BigNumber
   private _controller: AbortController
-  private _interimHubAddress: `0x${string}`
-  private _interimNetworkId: NetworkId
-  private _interimProvider: pTokensEvmProvider
+  private _interimHubAddress: string
+  private _interimProvider: interimProvider
 
   /**
    * Create and initialize a pTokensSwap object. pTokensSwap object shall be created using a pTokensSwapBuilder object.
@@ -33,9 +34,8 @@ export class pTokensSwap {
     sourceAsset: pTokensAsset,
     destinationAssets: DestinationInfo[],
     amount: BigNumber.Value,
-    interimHubAddress: `0x${string}`,
-    interimNetworkId = INTERIM_CHAIN_NETWORK_ID,
-    interimProvider: pTokensEvmProvider,
+    interimHubAddress: string,
+    interimProvider: interimProvider,
   ) {
     this._sourceAsset = sourceAsset
     if (destinationAssets.length !== 1) throw new Error('There must be one and only one destination asset')
@@ -43,9 +43,8 @@ export class pTokensSwap {
     this._amount = BigNumber(amount)
     this._controller = new AbortController()
     this._interimHubAddress = interimHubAddress
-    this._interimNetworkId = interimNetworkId
     this._interimProvider = interimProvider
-    // if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
+    if (!this.isAmountSufficient()) throw new Error('Insufficient amount to cover fees')
   }
 
   /**
@@ -157,7 +156,7 @@ export class pTokensSwap {
               .on('txConfirmed', (_swapResult: SwapResult) => {
                 promi.emit('inputTxConfirmed', _swapResult)
               })
-            const interimTxHash = await this.monitorInterimTransactions(swapResult.operationId)
+            const interimLog = await this.monitorInterimTransactions(swapResult.operationId)
               .on('operationQueued', (_hash: string) => {
                 promi.emit('interimOperationQueued', { txHash: _hash, operationId: swapResult.operationId })
               })
@@ -167,19 +166,19 @@ export class pTokensSwap {
               .on('operationCancelled', (_hash: string) => {
                 promi.emit('interimOperationCancelled', { txHash: _hash, operationId: swapResult.operationId })
               })
-            const interimExecutedReceipt = await this._interimProvider.waitForTransactionReceipt(interimTxHash)
-            const destChainOpId = getOperationIdFromTransactionReceipt(INTERIM_CHAIN_NETWORK_ID, interimExecutedReceipt)
-            const outputTx = await this.monitorOutputTransactions(destChainOpId)
+            // const interimExecutedReceipt = await this._interimProvider.waitForTransactionConfirmation(interimTxHash, 2)
+            const destChainOperationId = getOperationIdFromLog(interimLog, INTERIM_CHAIN_NETWORK_ID)
+            const outputLog = await this.monitorOutputTransactions(destChainOperationId)
               .on('operationQueued', (_hash: string) => {
-                promi.emit('operationQueued', { txHash: _hash, operationId: destChainOpId })
+                promi.emit('operationQueued', { txHash: _hash, operationId: destChainOperationId })
               })
               .on('operationExecuted', (_hash: string) => {
-                promi.emit('operationExecuted', { txHash: _hash, operationId: destChainOpId })
+                promi.emit('operationExecuted', { txHash: _hash, operationId: destChainOperationId })
               })
               .on('operationCancelled', (_hash: string) => {
-                promi.emit('operationCancelled', { txHash: _hash, operationId: destChainOpId })
+                promi.emit('operationCancelled', { txHash: _hash, operationId: destChainOperationId })
               })
-            return resolve({ txHash: outputTx, operationId: destChainOpId })
+            return resolve({ txHash: outputLog, operationId: destChainOperationId })
           } catch (err) {
             return reject(err)
           }
