@@ -51,10 +51,10 @@ export type AssetInfo = {
   assetTokenAddress?: string
   /** Token's decimals. */
   decimals: number
-  /** pNetwork enclave address. */
-  identity?: string
-  // /** Token-related fees. */
-  // fees: AssetFees
+  /** is a native token. */
+  isNative: boolean
+  /** pNetwork address. */
+  pTokenAddress?: string
   /** Underlying asset decmials*/
   underlyingAssetName: string
   /** Underlying asset symbol*/
@@ -114,6 +114,11 @@ export abstract class pTokensAsset {
     return this.assetInfo.symbol
   }
 
+  /** Return the token's blockchain type. */
+  get type(): BlockchainType {
+    return this._type
+  }
+
   /** Return the chain ID of the token. */
   get networkId(): NetworkId {
     return this._assetInfo.networkId as NetworkId
@@ -132,11 +137,6 @@ export abstract class pTokensAsset {
   /** Return token smart contract address. */
   get assetTokenAddress(): string {
     return this.assetInfo.assetTokenAddress ? this.assetInfo.assetTokenAddress : null
-  }
-
-  /** Return the pNetwork enclave address for the token. */
-  get identity() {
-    return this.assetInfo.identity ? this.assetInfo.identity : null
   }
 
   /** Return the weight associated to the token during the swap. Its usage is currently not supported. */
@@ -170,5 +170,5 @@ export abstract class pTokensAsset {
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  protected abstract monitorCrossChainOperations(_operationId: string): PromiEvent<string>
+  protected abstract monitorCrossChainOperations(_operationId: string): PromiEvent<any>
 }
