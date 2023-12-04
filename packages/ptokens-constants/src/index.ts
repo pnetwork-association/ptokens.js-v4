@@ -52,4 +52,6 @@ export const FactoryAddress = new Map<NetworkId, string>([
   [NetworkId.PolygonMainnet, '0x4650787da4A497496e514EcCFd6F888B7804ebBe'],
 ])
 
+// INTERIM_CHAIN_TYPE must be the BlockchainType of INTERIM_CHAIN_NETWORK_ID
+export type InterimChainType = BlockchainType.EVM
 export const INTERIM_CHAIN_NETWORK_ID = NetworkId.PolygonMainnet
