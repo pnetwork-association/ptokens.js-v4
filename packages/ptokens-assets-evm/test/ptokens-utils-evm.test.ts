@@ -8,7 +8,6 @@ import PNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 import * as utils from '../src/lib'
 
 import logs from './utils/logs.json'
-import { publicClient } from './utils/viem-clients'
 
 describe('ethereum utilities', () => {
   test('Should return a Viem chain', () => {
@@ -41,13 +40,6 @@ describe('ethereum utilities', () => {
     const expectedOnChainAmount = BigNumber(10000)
     const onChainAmount = utils.onChainFormat(offChainAmount, decimals)
     expect(onChainAmount).toStrictEqual(expectedOnChainAmount)
-  })
-
-  test('Should return a valid gas limit', async () => {
-    const getBlockSpy = jest.fn().mockResolvedValue({ gasLimit: 1000 })
-    publicClient.getBlock = getBlockSpy
-    const gasLimit = await utils.getGasLimit(publicClient)
-    expect(typeof gasLimit).toBe('number')
   })
 
   test('Should return true since 0xhello is 0x prefixed', () => {

@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
 import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
-import { TransactionReceipt, WalletClient } from 'viem'
+import { Log, TransactionReceipt, WalletClient } from 'viem'
 
 import pNetworkHubAbi from './abi/PNetworkHubAbi'
 import { getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
@@ -89,15 +89,15 @@ export class pTokensEvmAsset extends pTokensAsset {
             }
             promi.emit('txConfirmed', ret)
             return resolve(ret)
-          } catch (err) {
-            return reject(err)
+          } catch (_err) {
+            return reject(_err)
           }
         })() as unknown,
     )
     return promi
   }
 
-  protected monitorCrossChainOperations(_operationId: string): PromiEvent<string> {
+  protected monitorCrossChainOperations(_operationId: string): PromiEvent<Log> {
     return this.provider.monitorCrossChainOperations(this.hubAddress, _operationId)
   }
 }

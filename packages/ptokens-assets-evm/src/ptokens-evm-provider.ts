@@ -1,14 +1,11 @@
-// @ts-ignore
-import polling from 'light-async-polling'
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { stringUtils } from 'ptokens-helpers'
-import { Abi, PublicClient, WalletClient, TransactionReceipt, Log, Block } from 'viem'
+import { Abi, PublicClient, WalletClient, TransactionReceipt, Log, Block, http, createWalletClient } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 
-import pNetworkHubAbi from './abi/PNetworkHubAbi'
-import { EVENT_NAMES, getOperationIdFromLog } from './lib/'
-
-const BLOCK_OFFSET = 1000n
+import PNetworkHubAbi from './abi/PNetworkHubAbi'
+import { EVENT_NAMES, formatAddress, getOperationIdFromLog } from './lib/'
 
 export type MakeContractSendOptions = {
   /** The method to be called. */
@@ -18,9 +15,9 @@ export type MakeContractSendOptions = {
   /** The contract address. */
   contractAddress: string
   /** The value being sent with the transaction. */
-  value: bigint
+  value: bigint | string
   /** The gas limit for the transaction. */
-  gasLimit?: bigint
+  gasLimit?: bigint | string
   /** The number of confirmation to wait before returning the tx receipt */
   confirmations?: number
 }
@@ -62,11 +59,11 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas price to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasPrice(_gasPrice: bigint) {
-    if (BigInt(_gasPrice) <= 0n || BigInt(_gasPrice) >= 1e12) {
+  setGasPrice(_gasPrice: bigint | number | string) {
+    if (BigInt(_gasPrice) <= 0 || BigInt(_gasPrice) >= 1e12) {
       throw new Error('Invalid gas price')
     }
-    this._gasPrice = _gasPrice
+    this._gasPrice = BigInt(_gasPrice)
     return this
   }
 
@@ -92,26 +89,32 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _gasPrice - The desired gas limit to be used when sending transactions.
    * @returns The same provider. This allows methods chaining.
    */
-  setGasLimit(_gasLimit: bigint) {
-    if (_gasLimit <= 0 || _gasLimit >= 10e6) {
+  setGasLimit(_gasLimit: bigint | number | string) {
+    if (BigInt(_gasLimit) <= 0 || BigInt(_gasLimit) >= 10e6) {
       throw new Error('Invalid gas limit')
     }
-    this._gasLimit = _gasLimit
+    this._gasLimit = BigInt(_gasLimit)
     return this
   }
 
-  // /**
-  //  * Set a private key to sign transactions.
-  //  * @param _key - A private key to sign transactions.
-  //  * @returns The same provider. This allows methods chaining.
-  //  */
-  // setPrivateKey(_key: string) {
-  //   // TODO
-  //   return this
-  // }
+  /**
+   * Set a private key to sign transactions.
+   * @param _key - A private key to sign transactions.
+   * @returns The same provider. This allows methods chaining.
+   */
+  setPrivateKeyWalletClient(_key: `0x${string}`) {
+    const pkWalletClient = createWalletClient({
+      account: privateKeyToAccount(_key),
+      chain: this._publicClient.chain,
+      transport: http(),
+    })
+    this.setWalletClient(pkWalletClient)
+    return this
+  }
 
-  async getLatestBlockNumber(): Promise<bigint | null> {
+  async getLatestBlockNumber(): Promise<bigint> {
     const block: Block = await this._publicClient.getBlock({ blockTag: 'latest' })
+    if (!block.number) throw new Error('Viem could not retreive latest block number')
     return block.number
   }
 
@@ -135,22 +138,20 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
             if (!this._walletClient) throw new Error('WalletClient not provided')
             const { method, abi, contractAddress, value, gasLimit, confirmations } = _options
             const [account] = await this._walletClient.getAddresses()
+            if (!account) throw new Error('No account found for the provided walletClient')
             const { request } = await this._publicClient.simulateContract({
               account: account,
               address: stringUtils.addHexPrefix(contractAddress),
               abi: abi,
               functionName: method,
-              value: value,
+              value: BigInt(value),
               args: _args,
-              gas: gasLimit || this.gasLimit ? gasLimit || this.gasLimit : undefined,
-              gasPrice: this.gasPrice ? this.gasPrice : undefined,
+              gas: gasLimit ? BigInt(gasLimit) : this.gasLimit,
+              gasPrice: this.gasPrice,
             })
             const txHash = await this._walletClient.writeContract(request)
             promi.emit('txBroadcasted', txHash)
-            const txReceipt: TransactionReceipt = await this._publicClient.waitForTransactionReceipt({
-              hash: txHash,
-              confirmations: confirmations ? confirmations : 1,
-            })
+            const txReceipt: TransactionReceipt = await this.waitForTransactionConfirmation(txHash, confirmations)
             promi.emit('txConfirmed', txReceipt)
             return resolve(txReceipt)
           } catch (_err) {
@@ -182,85 +183,62 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
   }
 
   /**
-   * @deprecated Use https://viem.sh/docs/actions/public/waitForTransactionReceipt.html instead
-   */
-  async waitForTransactionConfirmation(_tx: string, _pollingTime = 1000) {
-    let receipt: TransactionReceipt | undefined
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    await polling(async () => {
-      try {
-        receipt = await this._publicClient.getTransactionReceipt({ hash: stringUtils.addHexPrefix(_tx) })
-        if (!receipt) return false
-        else if (receipt.status) return true
-        else return false
-      } catch (_err) {
-        return false
-      }
-    }, _pollingTime)
-    if (!receipt) throw new Error('Polling function stopped unexpectedly. No receipt found')
-    return receipt.transactionHash.toString()
-  }
-
-  /**
    * Wait for tx receipt.
    * @param _txHash - Transcation hash of the searched receipt.
+   * @param _confirmations - Number of confirmations to wait.
    * @returns TransactionReceipt of _txHash.
    */
-  async waitForTransactionReceipt(_txHash: `0x${string}`): Promise<TransactionReceipt> {
-    const receipt: TransactionReceipt = await this._publicClient.waitForTransactionReceipt({ hash: _txHash})
+  async waitForTransactionConfirmation(_txHash: string, _confirmations: number = 1): Promise<TransactionReceipt> {
+    const receipt: TransactionReceipt = await this._publicClient.waitForTransactionReceipt({
+      hash: formatAddress(_txHash),
+      confirmations: _confirmations,
+    })
     if (!receipt) throw new Error('No receipt found')
     return receipt
   }
 
-  protected async _pollForHubOperation(
+  protected async _watchEvent(
     _hubAddress: string,
     _eventName: EVENT_NAMES,
-    _fromBlock: bigint,
     _operationId: string,
     _pollingTime = 1000,
   ): Promise<Log> {
-    let log: Log | undefined
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    await polling(async () => {
+    return await new Promise<Log>((resolve, reject) => {
       try {
-        log = undefined
-        const logs = await this._publicClient.getLogs({
-          fromBlock: _fromBlock,
-          address: stringUtils.addHexPrefix(_hubAddress),
-          events: pNetworkHubAbi.filter((_fun) => _fun.type === 'event' && _fun.name === _eventName.toString()),
+        const stopWatching = this._publicClient.watchContractEvent({
+          address: formatAddress(_hubAddress),
+          abi: PNetworkHubAbi,
+          pollingInterval: _pollingTime,
+          eventName: _eventName,
+          onLogs: (logs) => {
+            const targetLog = logs.find((log) => getOperationIdFromLog(log) === _operationId)
+            if (targetLog) {
+              resolve(targetLog)
+              stopWatching()
+            }
+          },
+          onError: (error) => console.error(error),
         })
-        log = logs.find((_log) => getOperationIdFromLog(_log) === _operationId)
-        if (log) return true
-        return false
       } catch (_err) {
-        return false
+        reject(_err)
       }
-    }, _pollingTime)
-    if (!log) throw new Error('Polling function stopped unexpectedly. No log found')
-    return log
+    })
   }
 
   monitorCrossChainOperations(_hubAddress: string, _operationId: string) {
-    const promi = new PromiEvent<`0x${string}`>(
+    const promi = new PromiEvent<Log>(
       (resolve, reject) =>
         (async () => {
           try {
-            const latestBlockNumber = await this.getLatestBlockNumber()
-            if (!latestBlockNumber) throw new Error('Viem could not retreive latest block number')
-            const fromBlock = latestBlockNumber - BigInt(BLOCK_OFFSET)
-            await this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_QUEUED, fromBlock, _operationId).then(
-              (_log) => {
-                promi.emit('operationQueued', _log.transactionHash)
-                return _log
-              },
-            )
+            await this._watchEvent(_hubAddress, EVENT_NAMES.OPERATION_QUEUED, _operationId).then((_log) => {
+              promi.emit('operationQueued', _log.transactionHash)
+              return _log
+            })
             const finalTxLog: Log = await Promise.any([
-              this._pollForHubOperation(_hubAddress, EVENT_NAMES.OPERATION_EXECUTED, fromBlock, _operationId).then(
-                (_log) => {
-                  promi.emit('operationExecuted', _log.transactionHash)
-                  return _log
-                },
-              ),
+              this._watchEvent(_hubAddress, EVENT_NAMES.OPERATION_EXECUTED, _operationId).then((_log) => {
+                promi.emit('operationExecuted', _log.transactionHash)
+                return _log
+              }),
               // TODO: need a way to stop this polling whenever the OPERATION_EXECUTED polling resolves
               // this._pollForStateManagerOperation(
               //   _stateManagerAddress,
@@ -272,8 +250,8 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               //   return _log
               // }),
             ])
-            if (!finalTxLog.transactionHash) throw new Error('Tx Log do not contain a transaction hash')
-            return resolve(finalTxLog.transactionHash)
+            if (!finalTxLog) throw new Error('Tx Log do not contain a transaction hash')
+            return resolve(finalTxLog)
           } catch (_err) {
             return reject(_err)
           }

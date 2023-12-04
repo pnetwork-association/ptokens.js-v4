@@ -2,7 +2,8 @@ import { Blockchain, NetworkId, Network } from 'ptokens-constants'
 
 import { pTokensEvmAssetBuilder, pTokensEvmProvider } from '../src'
 import ABI from '../src/abi/PFactoryAbi'
-import { publicClient, walletClient } from './utils/viem-clients'
+
+import { publicClient, walletClient } from './utils/mock-viem-clients'
 
 describe('EVM asset', () => {
   beforeAll(() => {
@@ -64,7 +65,7 @@ describe('EVM asset', () => {
   test('Should create an EVM asset from a native token', async () => {
     const assetInfo = {
       networkId: NetworkId.ArbitrumMainnet,
-      isNative: false,
+      isNative: true,
       symbol: 'pSYM',
       assetTokenAddress: 'asset-token-address',
       decimals: 18,

@@ -1,13 +1,14 @@
 import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
 import { Blockchain, NetworkId, Network } from 'ptokens-constants'
-import { TransactionReceipt } from 'viem'
+import { TransactionReceipt, Log } from 'viem'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
 import pNetworkHubAbi from '../src/abi/PNetworkHubAbi'
 
+import logs from './utils/logs.json'
+import { publicClient, walletClient } from './utils/mock-viem-clients'
 import receipt from './utils/receiptUserSend.json'
-import { publicClient, walletClient } from './utils/viem-clients'
 
 describe('EVM asset', () => {
   beforeEach(() => {
@@ -27,10 +28,11 @@ describe('EVM asset', () => {
           underlyingAssetSymbol: 'SYM',
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
+          isNative: true,
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
-        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        pTokenAddress: 'ptoken-address',
         provider: new pTokensEvmProvider(publicClient),
       })
       expect(asset.symbol).toStrictEqual('pSYM')
@@ -53,10 +55,11 @@ describe('EVM asset', () => {
           underlyingAssetSymbol: 'SYM',
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
+          isNative: true,
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
-        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        pTokenAddress: 'ptoken-address',
         provider: new pTokensEvmProvider(publicClient),
       })
       asset.setWalletClient(walletClient)
@@ -81,10 +84,11 @@ describe('EVM asset', () => {
           underlyingAssetSymbol: 'SYM',
           underlyingAssetName: 'Symbol',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
+          isNative: true,
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
-        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        pTokenAddress: 'ptoken-address',
         provider: new pTokensEvmProvider(publicClient),
       })
       try {
@@ -123,10 +127,11 @@ describe('EVM asset', () => {
           underlyingAssetSymbol: 'underlying-asset-symbol',
           underlyingAssetName: 'underlying-asset-name',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
+          isNative: true,
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
-        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        pTokenAddress: 'ptoken-address',
       })
       let txHashBroadcasted = ''
       let swapResultConfirmed = null
@@ -193,10 +198,11 @@ describe('EVM asset', () => {
           underlyingAssetSymbol: 'underlying-asset-symbol',
           underlyingAssetName: 'underlying-asset-name',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
+          isNative: true,
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
-        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        pTokenAddress: 'ptoken-address',
       })
       try {
         await asset['swap'](BigNumber(123.456789), 'destination-address', 'destination-chain-id')
@@ -214,10 +220,11 @@ describe('EVM asset', () => {
     })
 
     test('Should call provider monitorCrossChainOperations', async () => {
+      const log = logs[0]
       const provider = new pTokensEvmProvider(publicClient, walletClient)
       const monitorCrossChainOperationsSpy = jest
         .spyOn(provider, 'monitorCrossChainOperations')
-        .mockResolvedValue('0x-tx-hash')
+        .mockResolvedValue(log as unknown as Log)
       const asset = new pTokensEvmAsset({
         provider: provider,
         assetInfo: {
@@ -230,13 +237,14 @@ describe('EVM asset', () => {
           underlyingAssetSymbol: 'underlying-asset-symbol',
           underlyingAssetName: 'underlying-asset-name',
           underlyingAssetTokenAddress: 'underlying-asset-token-address',
+          isNative: true,
         },
         factoryAddress: 'factory-address',
         hubAddress: 'hub-address',
-        pTokenAddress: '0x6a57e6046405eb1a075c3ea51de6447171417e24',
+        pTokenAddress: 'ptoken-address',
       })
       const ret = await asset['monitorCrossChainOperations']('operation-id')
-      expect(ret).toStrictEqual('0x-tx-hash')
+      expect(ret).toStrictEqual(log as unknown as Log)
       expect(monitorCrossChainOperationsSpy).toHaveBeenCalledTimes(1)
     })
   })

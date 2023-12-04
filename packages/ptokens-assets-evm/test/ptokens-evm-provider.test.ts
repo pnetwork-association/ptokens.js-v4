@@ -1,32 +1,28 @@
-import { TransactionReceipt, createPublicClient, createWalletClient, http } from 'viem'
-import { mainnet, polygon } from 'viem/chains'
+import { EventEmitter } from 'events'
+
+import { TransactionReceipt, createWalletClient, http, Log, PublicClient, WalletClient } from 'viem'
+import { polygon } from 'viem/chains'
 
 import { pTokensEvmProvider } from '../src'
 import * as utils from '../src/lib'
+
 import abi from './utils/exampleContractABI'
 import logs from './utils/logs.json'
 
-const receiptWithFalseStatus = require('./utils/receiptWithFalseStatus')
 const receiptWithTrueStatus = require('./utils/receiptWithTrueStatus')
 
-const publicClient = createPublicClient({ 
-  chain: mainnet,
-  transport: http()
-})
-
-const walletClient = createWalletClient({
-  chain: mainnet,
-  transport: http()
-})
+const publicClient: PublicClient = {} as PublicClient
+const walletClient: WalletClient = {} as WalletClient
 
 const walletClient2 = createWalletClient({
   chain: polygon,
-  transport: http()
+  transport: http(),
 })
 
 describe('EVM provider', () => {
   beforeEach(() => {
     jest.resetAllMocks()
+    jest.restoreAllMocks()
   })
 
   test('Should throw with negative gas price', () => {
@@ -133,7 +129,7 @@ describe('EVM provider', () => {
       address: options.contractAddress,
       abi: options.abi,
       functionName: options.method,
-      args: args
+      args: args,
     }
     const publicReadContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
@@ -144,10 +140,7 @@ describe('EVM provider', () => {
       return promi
     })
     publicClient.readContract = publicReadContractMock
-    const res = await provider.makeContractCall(
-      options,
-      args,
-    )
+    const res = await provider.makeContractCall(options, args)
     expect(res).toEqual('publicClientCall')
     expect(publicReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
   })
@@ -174,9 +167,7 @@ describe('EVM provider', () => {
       return promi
     })
     publicClient.readContract = publicReadContractMock
-    const res = await provider.makeContractCall<number, []>(
-      options
-    )
+    const res = await provider.makeContractCall<number, []>(options)
     expect(res).toEqual('publicClientCall')
     expect(publicReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
   })
@@ -225,7 +216,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -258,7 +249,10 @@ describe('EVM provider', () => {
     expect(getAddressMock).toHaveBeenCalledTimes(1)
     expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
-    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
+      confirmations: 1,
+      hash: utils.formatAddress('tx-hash'),
+    })
   })
 
   test('Should send a contract method with no arguments', async () => {
@@ -304,7 +298,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -316,14 +310,12 @@ describe('EVM provider', () => {
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
-      .makeContractSend(
-        {
-          method: method,
-          abi,
-          contractAddress: contractAddress,
-          value: value,
-        },
-      )
+      .makeContractSend({
+        method: method,
+        abi,
+        contractAddress: contractAddress,
+        value: value,
+      })
       .once('txBroadcasted', (_hash) => {
         txBroadcastedHash = _hash
       })
@@ -336,7 +328,10 @@ describe('EVM provider', () => {
     expect(getAddressMock).toHaveBeenCalledTimes(1)
     expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
-    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
+      confirmations: 1,
+      hash: utils.formatAddress('tx-hash'),
+    })
   })
 
   test('Should send a contract method with waiting for n confirmation', async () => {
@@ -384,7 +379,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -418,7 +413,10 @@ describe('EVM provider', () => {
     expect(getAddressMock).toHaveBeenCalledTimes(1)
     expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
-    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: confs, hash: 'tx-hash'})
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
+      confirmations: confs,
+      hash: utils.formatAddress('tx-hash'),
+    })
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
@@ -469,7 +467,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -502,7 +500,10 @@ describe('EVM provider', () => {
     expect(getAddressMock).toHaveBeenCalledTimes(1)
     expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
-    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
+      confirmations: 1,
+      hash: utils.formatAddress('tx-hash'),
+    })
   })
 
   test('Should send a contract method with set gas price', async () => {
@@ -551,7 +552,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -584,7 +585,10 @@ describe('EVM provider', () => {
     expect(getAddressMock).toHaveBeenCalledTimes(1)
     expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
-    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
+      confirmations: 1,
+      hash: utils.formatAddress('tx-hash'),
+    })
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
@@ -633,7 +637,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -666,7 +670,10 @@ describe('EVM provider', () => {
     expect(getAddressMock).toHaveBeenCalledTimes(1)
     expect(simulateContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
-    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {confirmations: 1, hash: 'tx-hash'})
+    expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
+      confirmations: 1,
+      hash: utils.formatAddress('tx-hash'),
+    })
   })
 
   test('Should reject if walletClient is not defined', async () => {
@@ -758,7 +765,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -800,7 +807,7 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
         setImmediate(() => {
-          return resolve({request: 'simulate-write'})
+          return resolve({ request: 'simulate-write' })
         }),
       )
       return promi
@@ -843,16 +850,14 @@ describe('EVM provider', () => {
   test('Should wait for transaction confirmation', async () => {
     const provider = new pTokensEvmProvider(publicClient)
     const waitForConfirmationSpy = jest
-      .spyOn(publicClient, 'getTransactionReceipt')
-      .mockRejectedValueOnce(new Error('getTransactionReceipt error'))
-      .mockResolvedValueOnce(receiptWithFalseStatus as TransactionReceipt)
+      .spyOn(publicClient, 'waitForTransactionReceipt')
       .mockResolvedValue(receiptWithTrueStatus as TransactionReceipt)
     const ret = await provider.waitForTransactionConfirmation(
       '0x5d65fa769234d6eef32baaeeb267dd1b3b8e0ff2e04a0861e2d36af26d631046',
       500,
     )
-    expect(waitForConfirmationSpy).toHaveBeenCalledTimes(3)
-    expect(ret).toBe('0x5d65fa769234d6eef32baaeeb267dd1b3b8e0ff2e04a0861e2d36af26d631046')
+    expect(waitForConfirmationSpy).toHaveBeenCalledTimes(1)
+    expect(ret).toBe(receiptWithTrueStatus)
   })
 
   test('Should return the latest block number', async () => {
@@ -866,77 +871,91 @@ describe('EVM provider', () => {
 
   test('Should return a operationQueued log', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const eventName = utils.EVENT_NAMES.OPERATION_QUEUED
-    const retLog = logs[1]
-    const getLogsMock = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('getPastLogs error'))
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([retLog])
-      .mockResolvedValue([])
-    publicClient.getLogs = getLogsMock
-    const ret = await provider['_pollForHubOperation'](
-      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
-      eventName,
-      48606850n,
-      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-    )
-    expect(ret).toBe(retLog)
-    expect(getLogsMock).toHaveBeenCalledTimes(3)
+    const emitter = new EventEmitter()
+    const spyOnGetOperationIdFromLog = jest.spyOn(utils, 'getOperationIdFromLog')
+    const watchContractEventMock = ({ onLogs }: { onLogs: (provider: Array<Log>) => void }) => {
+      emitter.on('log-queued', onLogs)
+      return () => {
+        emitter.removeAllListeners('log-queued')
+      }
+    }
+    publicClient.watchContractEvent = watchContractEventMock as any
+    const emitEvents = () => {
+      emitter.emit('log-queued', [logs[6]])
+      emitter.emit('log-queued', [logs[1]])
+    }
+    const event = await Promise.all([
+      provider['_watchEvent'](
+        '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+        utils.EVENT_NAMES.OPERATION_QUEUED,
+        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      ),
+      emitEvents(),
+    ])
+    expect(event[0]).toStrictEqual(logs[1])
+    expect(spyOnGetOperationIdFromLog).toHaveBeenCalledTimes(2)
   })
 
   test('Should return a operationExecuted log', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const eventName = utils.EVENT_NAMES.OPERATION_EXECUTED
-    const retLog = logs[2]
-    const getLogsMock = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('getPastLogs error'))
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([retLog])
-      .mockResolvedValue([])
-    publicClient.getLogs = getLogsMock
-    const ret = await provider['_pollForHubOperation'](
-      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
-      eventName,
-      48606850n,
-      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-    )
-    expect(ret).toBe(retLog)
-    expect(getLogsMock).toHaveBeenCalledTimes(3)
+    const emitter = new EventEmitter()
+    const spyOnGetOperationIdFromLog = jest.spyOn(utils, 'getOperationIdFromLog')
+    const watchContractEventMock = ({ onLogs }: { onLogs: (provider: Array<Log>) => void }) => {
+      emitter.on('log-executed', onLogs)
+      return () => {
+        emitter.removeAllListeners('log-executed')
+      }
+    }
+    publicClient.watchContractEvent = watchContractEventMock as any
+    const emitEvents = () => {
+      emitter.emit('log-executed', [logs[4]])
+      emitter.emit('log-executed', [logs[2]])
+    }
+    const event = await Promise.all([
+      provider['_watchEvent'](
+        '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+        utils.EVENT_NAMES.OPERATION_EXECUTED,
+        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
+      ),
+      emitEvents(),
+    ])
+    expect(event[0]).toStrictEqual(logs[2])
+    expect(spyOnGetOperationIdFromLog).toHaveBeenCalledTimes(2)
   })
 
   test('Should return a operationCanceled log', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const eventName = utils.EVENT_NAMES.OPERATION_CANCELLED
-    const retLog = logs[7]
-    const getLogsMock = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('getPastLogs error'))
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([retLog])
-      .mockResolvedValue([])
-    publicClient.getLogs = getLogsMock
-    const ret = await provider['_pollForHubOperation'](
-      '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
-      eventName,
-      48634151n,
-      '0xc3e33a15fb36d4c813c32d85e8005baf94b37d032c9830f00009aa536966e5b3',
-    )
-    expect(ret).toBe(retLog)
-    expect(getLogsMock).toHaveBeenCalledTimes(3)
+    const emitter = new EventEmitter()
+    const spyOnGetOperationIdFromLog = jest.spyOn(utils, 'getOperationIdFromLog')
+    const watchContractEventMock = ({ onLogs }: { onLogs: (provider: Array<Log>) => void }) => {
+      emitter.on('log-executed', onLogs)
+      return () => {
+        emitter.removeAllListeners('log-executed')
+      }
+    }
+    publicClient.watchContractEvent = watchContractEventMock as any
+    const emitEvents = () => {
+      emitter.emit('log-executed', [logs[7]])
+    }
+    const event = await Promise.all([
+      provider['_watchEvent'](
+        '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+        utils.EVENT_NAMES.OPERATION_CANCELLED,
+        '0xc3e33a15fb36d4c813c32d85e8005baf94b37d032c9830f00009aa536966e5b3',
+      ),
+      emitEvents(),
+    ])
+    expect(event[0]).toStrictEqual(logs[7])
+    expect(spyOnGetOperationIdFromLog).toHaveBeenCalledTimes(1)
   })
 
   test('Should monitor a cross chain operation', async () => {
-    let operationQueuedObject = null, operationExecutedObject = null
+    let operationQueuedObject = null,
+      operationExecutedObject = null
     const operationCancelledObject = null
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const getLogsMock = jest
-      .fn()
-      .mockResolvedValueOnce(logs[1])
-      .mockResolvedValueOnce(logs[2])
-    publicClient.getBlock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1300n }))
-    provider['_pollForHubOperation'] = getLogsMock
+    const watchEventMock = jest.fn().mockResolvedValueOnce(logs[1]).mockResolvedValueOnce(logs[2])
+    provider['_watchEvent'] = watchEventMock
     const ret = await provider
       .monitorCrossChainOperations(
         '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
@@ -948,28 +967,30 @@ describe('EVM provider', () => {
       .on('operationExecuted', (_obj) => {
         operationExecutedObject = _obj
       })
-    expect(getLogsMock).toHaveBeenCalledTimes(2)
-    expect(getLogsMock).toHaveBeenNthCalledWith(1, 
+    expect(watchEventMock).toHaveBeenCalledTimes(2)
+    expect(watchEventMock).toHaveBeenNthCalledWith(
+      1,
       '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
       utils.EVENT_NAMES.OPERATION_QUEUED,
-      300n,
       '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
     )
-    expect(getLogsMock).toHaveBeenNthCalledWith(2, 
+    expect(watchEventMock).toHaveBeenNthCalledWith(
+      2,
       '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
       utils.EVENT_NAMES.OPERATION_EXECUTED,
-      300n,
       '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
     )
     expect(operationQueuedObject).toStrictEqual('0x530555c2b4f2d9be613b763e9dbe126b958ef44382f9db7b5001eb078050ccda')
     expect(operationExecutedObject).toStrictEqual('0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308')
-    expect(ret).toStrictEqual('0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308')
+    expect(ret).toStrictEqual(logs[2])
     expect(operationCancelledObject).toStrictEqual(null)
   })
 
   test('Should reject when an error occurs monitoring a cross chain operation', async () => {
     const provider = new pTokensEvmProvider(publicClient, walletClient)
-    provider['_publicClient'].getBlock = jest.fn().mockRejectedValue(new Error('error'))
+    publicClient.watchContractEvent = jest.fn().mockImplementation(() => {
+      throw new Error('error')
+    })
     try {
       await provider.monitorCrossChainOperations(
         '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',

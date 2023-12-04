@@ -1,25 +1,38 @@
 import { sha256 } from '@noble/hashes/sha256'
-import { AbiEvent } from 'abitype'
+import { AbiEvent, AbiEventParameter } from 'abitype'
 import BigNumber from 'bignumber.js'
-import { NetworkId } from 'ptokens-constants'
+import { FactoryAddress, NetworkId } from 'ptokens-constants'
+import { AssetInfo } from 'ptokens-entities'
 import {
-  TransactionReceipt,
   Log,
   toBytes,
   toHex,
   encodeAbiParameters,
   decodeEventLog,
   getEventSelector,
-  PublicClient,
-  Block,
   Chain,
+  TransactionReceipt,
+  createPublicClient,
+  http,
 } from 'viem'
-import { polygon } from 'viem/chains'
+import { arbitrum, bsc, gnosis, polygon } from 'viem/chains'
 
+import factoryAbi from '../abi/PFactoryAbi'
 import pNetworkHubAbi from '../abi/PNetworkHubAbi'
+import { pTokensEvmProvider } from '../ptokens-evm-provider'
 
 const events = pNetworkHubAbi.filter(({ type }) => type === 'event') as AbiEvent[]
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+const networkIdToViemChain: Record<NetworkId, Chain> = {
+  [NetworkId.ArbitrumMainnet]: arbitrum,
+  [NetworkId.BscMainnet]: bsc,
+  [NetworkId.GnosisMainnet]: gnosis,
+  [NetworkId.PolygonMainnet]: polygon,
+}
+
+export const formatAddress = (_address: string): `0x${string}` =>
+  _address.startsWith('0x') ? (_address as `0x${string}`) : (('0x' + _address) as `0x${string}`)
 
 export const getViemChain = (networkId: NetworkId): Chain => {
   switch (networkId) {
@@ -39,11 +52,6 @@ export function offChainFormat(_amount: BigNumber.Value, _decimals: number) {
   return BigNumber(_amount).dividedBy(BigNumber(10).pow(_decimals))
 }
 
-export async function getGasLimit(_publicClient: PublicClient): Promise<bigint> {
-  const block: Block = await _publicClient.getBlock({ blockTag: 'latest' })
-  return block.gasLimit
-}
-
 export enum EVENT_NAMES {
   OPERATION_QUEUED = 'OperationQueued',
   OPERATION_EXECUTED = 'OperationExecuted',
@@ -59,8 +67,9 @@ export const eventNameToSignatureMap = new Map<string, string>(
 )
 
 const getOperationIdFromObj = (_obj: any) => {
-  const tuple = pNetworkHubAbi.find((_) => _.type === 'event' && _.name === 'OperationExecuted')?.inputs
-  if (!tuple) throw new Error('UserSend not found in pNetworkHub abi')
+  const events = pNetworkHubAbi.filter((_) => _.type === 'event') as AbiEvent[]
+  const tuple = events.find((_event) => _event.name === (EVENT_NAMES.OPERATION_EXECUTED as string))
+    ?.inputs as AbiEventParameter[]
 
   const coded = encodeAbiParameters(tuple, [
     {
@@ -90,11 +99,10 @@ const getOperationIdFromObj = (_obj: any) => {
   return toHex(sha256(toBytes(coded)))
 }
 
-export const getOperationIdFromLog = (_log: Log<bigint>, _networkId: NetworkId | null = null) => {
+export const getOperationIdFromLog = (_log: Log, _networkId: NetworkId | null = null) => {
   const decodedLog = decodeEventLog({
     abi: pNetworkHubAbi,
-    data: _log.data,
-    topics: _log.topics,
+    ..._log,
   })
   return getOperationIdFromObj(
     Object.assign(
@@ -119,4 +127,57 @@ export const getOperationIdFromTransactionReceipt = (_networkId: NetworkId, _rec
   if (!relevantLog) throw new Error('No valid event in the receipt logs')
   const operationIds = getOperationIdFromLog(relevantLog, _networkId)
   return operationIds
+}
+
+export const getDefaultEvmProvider = (_networkId: NetworkId) =>
+  new pTokensEvmProvider(
+    createPublicClient({
+      chain: networkIdToViemChain[_networkId],
+      transport: http(),
+    }),
+  )
+
+export const getFactoryAddress = (_networkId: NetworkId): string => {
+  const factoryAddress = FactoryAddress.get(_networkId)
+  if (!factoryAddress) throw new Error(`Could not retreive ${_networkId} Factory address`)
+  return factoryAddress
+}
+
+export const getEvmHubAddress = async (_networkId: NetworkId, _evmProvider: pTokensEvmProvider): Promise<string> => {
+  try {
+    return await _evmProvider.makeContractCall<string, []>({
+      contractAddress: getFactoryAddress(_networkId),
+      method: 'hub',
+      abi: factoryAbi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
+}
+
+export const getEvmPToken = async (
+  _networkId: NetworkId,
+  _evmProvider: pTokensEvmProvider,
+  _assetInfo: AssetInfo,
+): Promise<string> => {
+  try {
+    return await _evmProvider.makeContractCall<string, [string, string, number, string, string]>(
+      {
+        contractAddress: getFactoryAddress(_networkId),
+        method: 'getPTokenAddress',
+        abi: factoryAbi,
+      },
+      [
+        _assetInfo.underlyingAssetName,
+        _assetInfo.underlyingAssetSymbol,
+        _assetInfo.underlyingAssetDecimals,
+        _assetInfo.underlyingAssetTokenAddress,
+        _assetInfo.underlyingAssetNetworkId,
+      ],
+    )
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
 }
