@@ -11,12 +11,12 @@ This library supports **only v2** bridges.
 - It permits host-to-host swaps, unleashing the pTokens to pTokens bridge feature.
 
 ## Installation
-The package is published in the [npm registry](https://www.npmjs.com/package/ptokens).
+The package is published in the [npm registry](https://www.npmjs.com/package/@p.network/ptokens).
 
 Initiate your Javascript/Typescript project and install it as a dependency:
 
 ```shell
-$ npm i ptokens
+$ npm i @p.network/ptokens
 ```
 
 ## Documentation
