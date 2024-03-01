@@ -1,5 +1,6 @@
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
+
 import { pTokensDepositAddress } from '../src/ptokens-deposit-address'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
 
 describe('pTokens deposit address', () => {
   test('Should generate correctly a UTXO deposit address', async () => {

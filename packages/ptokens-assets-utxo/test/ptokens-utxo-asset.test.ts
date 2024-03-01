@@ -1,12 +1,13 @@
-import { Blockchain, ChainId, Network } from 'ptokens-constants'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
+import { Blockchain, ChainId, Network } from '@p.network/ptokens-constants'
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
+
 import { pTokensDepositAddress } from '../src/ptokens-deposit-address'
 import { pTokensUtxoAsset, pTokensBlockstreamUtxoProvider } from '../src'
 
 import PromiEvent from 'promievent'
 import BigNumber from 'bignumber.js'
 
-jest.mock('ptokens-node')
+jest.mock('@p.network/ptokens-node')
 
 const nativeToXFees = {
   networkFee: 1e18,

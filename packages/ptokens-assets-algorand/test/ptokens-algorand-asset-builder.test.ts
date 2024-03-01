@@ -1,6 +1,6 @@
 import { pTokensAlgorandAssetBuilder, pTokensAlgorandProvider, BasicSignatureProvider } from '../src'
-import { Blockchain, ChainId, Network } from 'ptokens-constants'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
+import { Blockchain, ChainId, Network } from '@p.network/ptokens-constants'
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
 import algosdk from 'algosdk'
 
 const TEST_MNEMONIC =

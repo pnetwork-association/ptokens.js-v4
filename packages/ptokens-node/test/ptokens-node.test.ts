@@ -1,8 +1,8 @@
 import { pTokensNode, pTokensNodeProvider } from '../src/index'
 import jsonrpc from 'jsonrpc-lite'
 
-jest.mock('ptokens-helpers')
-import { http } from 'ptokens-helpers'
+jest.mock('@p.network/ptokens-helpers')
+import { http } from '@p.network/ptokens-helpers'
 
 describe('pTokensNode', () => {
   beforeEach(() => {

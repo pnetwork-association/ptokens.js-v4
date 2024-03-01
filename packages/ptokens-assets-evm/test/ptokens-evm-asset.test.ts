@@ -1,5 +1,6 @@
-import { Blockchain, ChainId, Network } from 'ptokens-constants'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
+import { Blockchain, ChainId, Network } from '@p.network/ptokens-constants'
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
+
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
 
 import PromiEvent from 'promievent'
@@ -28,7 +29,8 @@ const hostToXFees = {
 }
 
 jest.mock('web3')
-jest.mock('ptokens-node')
+jest.mock('@p.network/ptokens-node'
+)
 
 describe('EVM asset', () => {
   test('Should create an EVM asset from constructor', () => {

@@ -1,8 +1,9 @@
-import { pTokensNodeProvider } from '../src/index'
-import { http } from 'ptokens-helpers'
+import { http } from '@p.network/ptokens-helpers'
 import jsonrpc, { JsonRpcError } from 'jsonrpc-lite'
 
-jest.mock('ptokens-helpers')
+import { pTokensNodeProvider } from '../src/index'
+
+jest.mock('@p.network/ptokens-helpers')
 
 describe('pTokensNodeProvider', () => {
   describe('getUrl', () =>
