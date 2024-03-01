@@ -1,5 +1,5 @@
 {
-  "name": "ptokens-assets-algorand",
+  "name": "@p.network/ptokens-assets-algorand",
   "version": "1.6.0",
   "main": "dist/bundle.cjs.js",
   "module": "dist/bundle.esm.js",
@@ -16,10 +16,10 @@
     "@msgpack/msgpack": "^2.8.0",
     "algosdk": "^1.22.0",
     "promievent": "^0.1.5",
-    "ptokens-constants": "^1.6.0",
-    "ptokens-entities": "^1.6.0",
-    "ptokens-helpers": "^1.6.0",
-    "ptokens-node": "^1.6.0"
+    "@p.network/ptokens-constants": "^1.6.0",
+    "@p.network/ptokens-entities": "^1.6.0",
+    "@p.network/ptokens-helpers": "^1.6.0",
+    "@p.network/ptokens-node": "^1.6.0"
   },
   "typedoc": {
     "entryPoint": "./src/index.ts",
