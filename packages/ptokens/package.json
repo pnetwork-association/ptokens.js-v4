@@ -1,6 +1,6 @@
 {
   "name": "@p.network/ptokens",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "main": "dist/bundle.cjs.js",
   "module": "dist/bundle.esm.js",
   "types": "dist/index.d.ts",
@@ -11,14 +11,14 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@p.network/ptokens-assets-algorand": "^1.6.0",
-    "@p.network/ptokens-assets-eosio": "^1.6.0",
-    "@p.network/ptokens-assets-evm": "^1.7.0",
-    "@p.network/ptokens-assets-utxo": "^1.6.0",
-    "@p.network/ptokens-constants": "^1.6.0",
-    "@p.network/ptokens-entities": "^1.6.0",
-    "@p.network/ptokens-helpers": "^1.6.0",
-    "@p.network/ptokens-node": "^1.6.0",
-    "@p.network/ptokens-swap": "^1.7.0"
+    "@p.network/ptokens-assets-algorand": "^1.7.1",
+    "@p.network/ptokens-assets-eosio": "^1.7.1",
+    "@p.network/ptokens-assets-evm": "^1.7.1",
+    "@p.network/ptokens-assets-utxo": "^1.7.1",
+    "@p.network/ptokens-constants": "^1.7.1",
+    "@p.network/ptokens-entities": "^1.7.1",
+    "@p.network/ptokens-helpers": "^1.7.1",
+    "@p.network/ptokens-node": "^1.7.1",
+    "@p.network/ptokens-swap": "^1.7.1"
   }
 }

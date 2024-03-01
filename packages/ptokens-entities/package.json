@@ -1,6 +1,6 @@
 {
   "name": "@p.network/ptokens-entities",
-  "version": "1.6.0",
+  "version": "1.7.1",
   "main": "dist/bundle.cjs.js",
   "module": "dist/bundle.esm.js",
   "browser": "dist/bundle.umd.js",
@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.20.1",
+    "@p.network/ptokens-constants": "^1.7.1",
+    "@p.network/ptokens-helpers": "^1.7.1",
+    "@p.network/ptokens-node": "^1.7.1",
     "bignumber.js": "^9.1.0",
-    "promievent": "^0.1.5",
-    "@p.network/ptokens-constants": "^1.6.0",
-    "@p.network/ptokens-helpers": "^1.6.0",
-    "@p.network/ptokens-node": "^1.6.0"
+    "promievent": "^0.1.5"
   },
   "typedoc": {
     "entryPoint": "./src/index.ts",

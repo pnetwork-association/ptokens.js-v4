@@ -1,6 +1,6 @@
 {
   "name": "@p.network/ptokens-swap",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "main": "dist/bundle.cjs.js",
   "module": "dist/bundle.esm.js",
   "types": "dist/index.d.ts",
@@ -13,17 +13,17 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.20.1",
+    "@p.network/ptokens-constants": "^1.7.1",
+    "@p.network/ptokens-entities": "^1.7.1",
+    "@p.network/ptokens-helpers": "^1.7.1",
+    "@p.network/ptokens-node": "^1.7.1",
     "bignumber.js": "^9.1.0",
     "light-async-polling": "^1.0.2",
-    "promievent": "^0.1.5",
-    "@p.network/ptokens-constants": "^1.6.0",
-    "@p.network/ptokens-entities": "^1.6.0",
-    "@p.network/ptokens-helpers": "^1.6.0",
-    "@p.network/ptokens-node": "^1.6.0"
+    "promievent": "^0.1.5"
   },
   "devDependencies": {
-    "@p.network/ptokens-assets-evm": "^1.7.0",
-    "@p.network/ptokens-assets-utxo": "^1.6.0"
+    "@p.network/ptokens-assets-evm": "^1.7.1",
+    "@p.network/ptokens-assets-utxo": "^1.7.1"
   },
   "typedoc": {
     "entryPoint": "./src/index.ts",
