@@ -1,8 +1,10 @@
-import { BlockchainType } from 'ptokens-constants'
-import { pTokensAssetBuilder } from 'ptokens-entities'
-import { pTokensNode } from 'ptokens-node'
+import { BlockchainType } from '@p.network/ptokens-constants'
+import { pTokensAssetBuilder } from '@p.network/ptokens-entities'
+import { pTokensNode } from '@p.network/ptokens-node'
+
 import { pTokensUtxoAsset } from './ptokens-utxo-asset'
 import { pTokensUtxoProvider } from './ptokens-utxo-provider'
+
 export class pTokensUtxoAssetBuilder extends pTokensAssetBuilder {
   private _provider: pTokensUtxoProvider
 

@@ -1,4 +1,4 @@
-import { Blockchain, ChainId, Network } from 'ptokens-constants'
+import { Blockchain, ChainId, Network } from '@p.network/ptokens-constants'
 import { splitCamelCase } from '../string'
 
 function parseChainIdKey(_chainId: ChainId): { blockchain: Blockchain; network: Network } {

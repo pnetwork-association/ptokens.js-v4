@@ -1,4 +1,5 @@
-import { ChainId } from 'ptokens-constants'
+import { ChainId } from '@p.network/ptokens-constants'
+
 import { maps } from '../src/'
 
 describe('chainIdToBlockchainMap', () => {

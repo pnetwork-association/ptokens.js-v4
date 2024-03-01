@@ -1,5 +1,6 @@
-import { Blockchain, ChainId, Network } from 'ptokens-constants'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
+import { Blockchain, ChainId, Network } from '@p.network/ptokens-constants'
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
+
 import { pTokensEosioAsset, pTokensEosioProvider, Action } from '../src'
 
 import PromiEvent from 'promievent'
@@ -26,7 +27,8 @@ const hostToXFees = {
   },
 }
 
-jest.mock('ptokens-node')
+jest.mock('@p.network/ptokens-node'
+)
 
 describe('EOSIO asset', () => {
   test('Should create an EOSIO asset from constructor', () => {

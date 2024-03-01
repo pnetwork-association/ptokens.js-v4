@@ -1,8 +1,9 @@
-import * as utils from '../src/lib'
 import Web3 from 'web3'
 import { AbiItem } from 'web3-utils'
 import BigNumber from 'bignumber.js'
-import { stringUtils } from 'ptokens-helpers'
+import { stringUtils } from '@p.network/ptokens-helpers'
+
+import * as utils from '../src/lib'
 
 const abi = require('./utils/exampleContractABI.json')
 

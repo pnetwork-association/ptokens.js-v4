@@ -1,5 +1,6 @@
-import { BlockchainType, ChainId, TokenAddresses } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig } from 'ptokens-entities'
+import { BlockchainType, ChainId, TokenAddresses } from '@p.network/ptokens-constants'
+import { pTokensAsset, pTokenAssetConfig } from '@p.network/ptokens-entities'
+
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 import { onChainFormat } from './lib'
 

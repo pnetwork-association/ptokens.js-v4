@@ -1,13 +1,13 @@
 import Web3 from 'web3'
 import PromiEvent from 'promievent'
-import { stringUtils } from 'ptokens-helpers'
+import { stringUtils } from '@p.network/ptokens-helpers'
+import { pTokensAssetProvider } from '@p.network/ptokens-entities'
 import { provider, TransactionReceipt } from 'web3-core'
 import { AbiItem } from 'web3-utils'
 import BigNumber from 'bignumber.js'
 import polling from 'light-async-polling'
 
 import { getAccount, getContract } from './lib/'
-import { pTokensAssetProvider } from 'ptokens-entities'
 
 export type MakeContractSendOptions = {
   /** The method to be called. */

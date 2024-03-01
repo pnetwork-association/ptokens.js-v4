@@ -1,8 +1,9 @@
-import { ChainId } from 'ptokens-constants'
-import { pTokensNode, pTokensNodeProvider, Status } from 'ptokens-node'
+import { ChainId } from '@p.network/ptokens-constants'
+import { pTokensNode, pTokensNodeProvider, Status } from '@p.network/ptokens-node'
+import BigNumber from 'bignumber.js'
+
 import { pTokensSwap, pTokensSwapBuilder } from '../src/index'
 import { pTokenAssetFailingMock, pTokenAssetMock, pTokensProviderMock } from './mocks/ptoken-asset'
-import BigNumber from 'bignumber.js'
 
 const nativeToXFees = {
   networkFee: 1e18,
@@ -22,7 +23,8 @@ const hostToXFees = {
   },
 }
 
-jest.mock('ptokens-node')
+jest.mock('@p.network/ptokens-node'
+)
 jest.setTimeout(10000)
 
 describe('pTokensSwap', () => {

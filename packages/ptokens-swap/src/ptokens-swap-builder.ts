@@ -1,10 +1,10 @@
-import { pTokensSwap, DestinationInfo } from './ptokens-swap'
-import { pTokensAsset } from 'ptokens-entities'
-import { pTokensNode } from 'ptokens-node'
-import { stringUtils, validators } from 'ptokens-helpers'
+import { pTokensAsset } from '@p.network/ptokens-entities'
+import { pTokensNode } from '@p.network/ptokens-node'
+import { stringUtils, validators } from '@p.network/ptokens-helpers'
+import { ChainId, TokenAddresses } from '@p.network/ptokens-constants'
 import BigNumber from 'bignumber.js'
-import { ChainId, TokenAddresses } from 'ptokens-constants'
 
+import { pTokensSwap, DestinationInfo } from './ptokens-swap'
 export class pTokensSwapBuilder {
   private _sourceAsset: pTokensAsset
   private _destinationAssets: DestinationInfo[] = []

@@ -1,4 +1,4 @@
-import { pTokensNode } from 'ptokens-node'
+import { pTokensNode } from '@p.network/ptokens-node'
 
 export type DepositAddressConfig = {
   node: pTokensNode

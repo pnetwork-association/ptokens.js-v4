@@ -1,8 +1,9 @@
-import { pTokensAlgorandProvider } from '../src'
 import algosdk from 'algosdk'
+
+import { pTokensAlgorandProvider } from '../src'
 import { BasicSignatureProvider } from '../src/ptokens-algorand-provider'
-import JSONRequest from '../node_modules/algosdk/dist/cjs/src/client/v2/jsonrequest'
-import SendRawTransaction from '../node_modules/algosdk/dist/cjs/src/client/v2/algod/sendRawTransaction'
+import JSONRequest from '../node_modules/algosdk/dist/cjs/client/v2/jsonrequest'
+import SendRawTransaction from '../node_modules/algosdk/dist/cjs/client/v2/algod/sendRawTransaction'
 
 const TEST_MNEMONIC =
   'remind hat sibling sock multiply heart tuition magic bounce option yard rely daring raven basket wood bike educate ensure museum gorilla oyster tower ability claim'

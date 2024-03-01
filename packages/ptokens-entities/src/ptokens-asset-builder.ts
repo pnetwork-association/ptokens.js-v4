@@ -1,6 +1,7 @@
+import { ChainId, Blockchain, Network, BlockchainType, chainIdToTypeMap } from '@p.network/ptokens-constants'
+import { pTokensNode, AssetInfo } from '@p.network/ptokens-node'
+
 import { pTokensAsset } from './ptokens-asset'
-import { ChainId, Blockchain, Network, BlockchainType, chainIdToTypeMap } from 'ptokens-constants'
-import { pTokensNode, AssetInfo } from 'ptokens-node'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
 export abstract class pTokensAssetBuilder {

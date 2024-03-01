@@ -1,6 +1,7 @@
+import { Blockchain, ChainId, Network } from '@p.network/ptokens-constants'
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
+
 import { pTokensUtxoAssetBuilder, pTokensBlockstreamUtxoProvider } from '../src'
-import { Blockchain, ChainId, Network } from 'ptokens-constants'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
 
 const nativeToXFees = {
   networkFee: 1e18,

@@ -1,7 +1,8 @@
+import { pTokensNode, pTokensNodeProvider } from '@p.network/ptokens-node'
+import { pTokensEvmAsset } from '@p.network/ptokens-assets-evm'
+import { ChainId } from '@p.network/ptokens-constants'
+
 import { pTokensSwapBuilder } from '../src/index'
-import { pTokensNode, pTokensNodeProvider } from 'ptokens-node'
-import { pTokensEvmAsset } from 'ptokens-assets-evm'
-import { ChainId } from 'ptokens-constants'
 
 const nativeToXFees = {
   networkFee: 1e18,
@@ -21,7 +22,8 @@ const hostToXFees = {
   },
 }
 
-jest.mock('ptokens-node')
+jest.mock('@p.network/ptokens-node'
+)
 
 describe('pTokensSwapBuilder', () => {
   test('Should build a native to native swap charging proportional protocol fees', () => {

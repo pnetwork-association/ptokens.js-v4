@@ -1,6 +1,7 @@
-import { BlockchainType } from 'ptokens-constants'
-import { pTokensAssetBuilder } from 'ptokens-entities'
-import { pTokensNode } from 'ptokens-node'
+import { BlockchainType } from '@p.network/ptokens-constants'
+import { pTokensAssetBuilder } from '@p.network/ptokens-entities'
+import { pTokensNode } from '@p.network/ptokens-node'
+
 import { pTokensAlgorandAsset } from './ptokens-algorand-asset'
 import { pTokensAlgorandProvider } from './ptokens-algorand-provider'
 

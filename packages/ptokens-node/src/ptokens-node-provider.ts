@@ -1,6 +1,7 @@
-import { http } from 'ptokens-helpers'
+import { http } from '@p.network/ptokens-helpers'
 import jsonrpc from 'jsonrpc-lite'
 import { SuccessObject, ErrorObject } from 'jsonrpc-lite'
+
 export class pTokensNodeProvider {
   private _url: string
 

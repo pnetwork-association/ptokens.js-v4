@@ -1,6 +1,6 @@
-import { Blockchain, BlockchainType, ChainId, chainIdToTypeMap, Network } from 'ptokens-constants'
-import { maps } from 'ptokens-helpers'
-import { pTokensNode, AssetInfo } from 'ptokens-node'
+import { Blockchain, BlockchainType, ChainId, chainIdToTypeMap, Network } from '@p.network/ptokens-constants'
+import { maps } from '@p.network/ptokens-helpers'
+import { pTokensNode, AssetInfo } from '@p.network/ptokens-node'
 
 import PromiEvent from 'promievent'
 import BigNumber from 'bignumber.js'
