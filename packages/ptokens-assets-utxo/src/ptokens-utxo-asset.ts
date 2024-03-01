@@ -1,5 +1,6 @@
-import { ChainId, BlockchainType } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig } from 'ptokens-entities'
+import { ChainId, BlockchainType } from '@p.network/ptokens-constants'
+import { pTokensAsset, pTokenAssetConfig } from '@p.network/ptokens-entities'
+
 import { pTokensUtxoProvider } from './ptokens-utxo-provider'
 import { pTokensDepositAddress } from './ptokens-deposit-address'
 

@@ -4,7 +4,7 @@ import { Api, JsonRpc } from 'eosjs'
 import { JsSignatureProvider } from 'eosjs/dist/eosjs-jssig'
 import fetch from 'node-fetch'
 import { GetTransactionResult } from 'eosjs/dist/eosjs-rpc-interfaces'
-import { pTokensAssetProvider } from 'ptokens-entities'
+import { pTokensAssetProvider } from '@p.network/ptokens-entities'
 
 const EOS_TRANSACTION_EXECUTED = 'executed'
 

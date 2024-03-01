@@ -1,5 +1,6 @@
-import { BlockchainType } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig } from 'ptokens-entities'
+import { BlockchainType } from '@p.network/ptokens-constants'
+import { pTokensAsset, pTokenAssetConfig } from '@p.network/ptokens-entities'
+
 import { Action, pTokensEosioProvider } from './ptokens-eosio-provider'
 import { getAmountInEosFormat } from './lib'
 

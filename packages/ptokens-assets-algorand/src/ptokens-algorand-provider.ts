@@ -1,4 +1,4 @@
-import { pTokensAssetProvider } from 'ptokens-entities'
+import { pTokensAssetProvider } from '@p.network/ptokens-entities'
 import algosdk from 'algosdk'
 import PromiEvent from 'promievent'
 

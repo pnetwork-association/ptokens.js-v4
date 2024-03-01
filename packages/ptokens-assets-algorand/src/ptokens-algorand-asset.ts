@@ -1,11 +1,12 @@
-import { BlockchainType } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig } from 'ptokens-entities'
-import { stringUtils } from 'ptokens-helpers'
-import { pTokensAlgorandProvider } from './ptokens-algorand-provider'
+import { BlockchainType } from '@p.network/ptokens-constants'
+import { pTokensAsset, pTokenAssetConfig } from '@p.network/ptokens-entities'
+import { stringUtils } from '@p.network/ptokens-helpers'
 import PromiEvent from 'promievent'
 import algosdk from 'algosdk'
 import { encode } from '@msgpack/msgpack'
 import BigNumber from 'bignumber.js'
+
+import { pTokensAlgorandProvider } from './ptokens-algorand-provider'
 
 export type pTokenAlgorandAssetConfig = pTokenAssetConfig & {
   /** An pTokensAlgorandProvider for interacting with the underlaying blockchain */

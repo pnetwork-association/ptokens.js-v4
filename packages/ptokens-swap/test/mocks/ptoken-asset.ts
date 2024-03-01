@@ -1,5 +1,5 @@
-import { BlockchainType } from 'ptokens-constants'
-import { pTokensAsset, pTokensAssetProvider, pTokenAssetConfig } from 'ptokens-entities'
+import { BlockchainType } from '@p.network/ptokens-constants'
+import { pTokensAsset, pTokensAssetProvider, pTokenAssetConfig } from '@p.network/ptokens-entities'
 import PromiEvent from 'promievent'
 
 export class pTokensProviderMock implements pTokensAssetProvider {

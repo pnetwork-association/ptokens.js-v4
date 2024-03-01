@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import PromiEvent from 'promievent'
 import polling from 'light-async-polling'
-import { pTokensAssetProvider } from 'ptokens-entities'
+import { pTokensAssetProvider } from '@p.network/ptokens-entities'
 
 export type Transaction = {
   /** Status of the transaction. */
