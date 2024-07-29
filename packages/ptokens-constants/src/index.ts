@@ -1,9 +1,5 @@
 export enum NetworkId {
-  ArbitrumMainnet = '0xfc8ebb2b',
-  GnosisMainnet = '0xd41b1c5b',
-  PolygonMainnet = '0xf9b459a1',
-  BscMainnet = '0x5aca268b',
-  GoerliTestnet = '0xb9286154',
+  SepoliaTestnet = '0xaa36a7',
 }
 
 export enum BlockchainType {
@@ -13,12 +9,7 @@ export enum BlockchainType {
   ALGORAND,
 }
 
-export const networkIdToTypeMap = new Map<string, BlockchainType>([
-  [NetworkId.GnosisMainnet, BlockchainType.EVM],
-  [NetworkId.BscMainnet, BlockchainType.EVM],
-  [NetworkId.PolygonMainnet, BlockchainType.EVM],
-  [NetworkId.GoerliTestnet, BlockchainType.EVM],
-])
+export const networkIdToTypeMap = new Map<string, BlockchainType>([[NetworkId.SepoliaTestnet, BlockchainType.EVM]])
 
 export enum Blockchain {
   Ethereum,
@@ -46,13 +37,6 @@ export enum Network {
   Testnet,
 }
 
-export const FactoryAddress = new Map<NetworkId, string>([
-  [NetworkId.GoerliTestnet, '0xD64363f98aBf755f92D5cA89C57CDbc8d3D05F9c'],
-  [NetworkId.GnosisMainnet, '0x26b9EF42c92c41667A8688e61C44818Ca620986F'],
-  [NetworkId.BscMainnet, '0x4E2E430a73f70d55162Eb05423a89668D984dB55'],
-  [NetworkId.PolygonMainnet, '0x4E2E430a73f70d55162Eb05423a89668D984dB55'],
+export const AdapterAddress = new Map<NetworkId, string>([
+  [NetworkId.SepoliaTestnet, '0x87415715056DA7A5EB1a30E53C4F4d20B44DB71D'],
 ])
-
-// INTERIM_CHAIN_TYPE must be the BlockchainType of INTERIM_CHAIN_NETWORK_ID
-export type InterimChainType = BlockchainType.EVM
-export const INTERIM_CHAIN_NETWORK_ID = NetworkId.PolygonMainnet
