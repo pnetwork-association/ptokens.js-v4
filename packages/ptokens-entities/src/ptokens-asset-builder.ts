@@ -1,4 +1,4 @@
-import { NetworkId, Blockchain, Network, BlockchainType, networkIdToTypeMap, FactoryAddress } from 'ptokens-constants'
+import { BlockchainType, networkIdToTypeMap, AdapterAddress, ChainId } from 'ptokens-constants'
 import { validators } from 'ptokens-helpers'
 
 import { AssetInfo, pTokensAsset } from './ptokens-asset'
@@ -7,12 +7,10 @@ import { pTokensAssetProvider } from './ptokens-asset-provider'
 export abstract class pTokensAssetBuilder {
   protected _decimals: number
   protected _weight: number
-  protected _network: Network
-  protected _blockchain: Blockchain
-  protected _networkId: NetworkId
+  protected _chainId: ChainId
   protected _assetInfo: AssetInfo
   private _type: BlockchainType
-  protected _factoryAddress: string
+  protected _adapterAddress: string
 
   /**
    * Create and initialize a pTokensAssetBuilder object.
@@ -34,12 +32,12 @@ export abstract class pTokensAssetBuilder {
 
   /**
    * Set the blockchain chain ID for the token.
-   * @param _networkId - The chain ID.
+   * @param _chainId - The chain ID.
    * @returns The same builder. This allows methods chaining.
    */
-  setBlockchain(_networkId: NetworkId) {
-    if (networkIdToTypeMap.get(_networkId) !== this._type) throw new Error('Unsupported chain ID')
-    this._networkId = _networkId
+  setBlockchain(_chainId: ChainId) {
+    if (networkIdToTypeMap.get(_chainId) !== this._type) throw new Error('Unsupported chain ID')
+    this._chainId = _chainId
     return this
   }
 
@@ -67,8 +65,8 @@ export abstract class pTokensAssetBuilder {
   /**
    * Return the router address for the swap.
    */
-  get factoryAddress(): string {
-    return this._factoryAddress || FactoryAddress.get(this._assetInfo.networkId as NetworkId)
+  get adapterAddress(): string {
+    return this._adapterAddress || AdapterAddress.get(this._assetInfo.chainId as ChainId)
   }
 
   /**
@@ -76,8 +74,8 @@ export abstract class pTokensAssetBuilder {
    * @param _factoryAddress - Address of the pTokens factory contract
    * @returns The same builder. This allows methods chaining.
    */
-  setFactoryAddress(_factoryAddress: string) {
-    this._factoryAddress = _factoryAddress
+  setAdapterAddress(_adapterAddress: string) {
+    this._adapterAddress = _adapterAddress
     return this
   }
 
@@ -87,10 +85,10 @@ export abstract class pTokensAssetBuilder {
   }
 
   private validate() {
-    if (!this._networkId) throw new Error('Missing chain ID')
+    if (!this._chainId) throw new Error('Missing chain ID')
     if (!this._assetInfo) throw new Error('Missing asset info')
-    if (!this.factoryAddress) throw new Error('Missing factory address')
-    if (!validators.isValidAddressByChainId(this.factoryAddress, this._networkId))
+    if (!this.adapterAddress) throw new Error('Missing adapter address')
+    if (!validators.isValidAddressByChainId(this.adapterAddress, this._chainId))
       throw new Error('Invalid factory address')
     if (this._decimals !== undefined) this._assetInfo.decimals = this._decimals
   }

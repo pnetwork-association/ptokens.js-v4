@@ -1,18 +1,12 @@
-import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
-import { Blockchain, BlockchainType, NetworkId, networkIdToTypeMap, Network } from 'ptokens-constants'
-import { maps } from 'ptokens-helpers'
+import { BlockchainType, ChainId, networkIdToTypeMap } from 'ptokens-constants'
 
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
 export type pTokenAssetConfig = {
   /** An AssetInfo object containing asset technical details. */
   assetInfo: AssetInfo
-  factoryAddress: string
-  hubAddress: string
-  pTokenAddress: string
-  /** The asset weight during the swap. Defaults to 1. Actually it is not supported.  */
-  weight?: number
+  adapterAddress: string
 }
 
 export type NativeToXBasisPoints = {
@@ -42,42 +36,46 @@ export type AssetFees = {
   basisPoints: NativeToXBasisPoints | HostToXBasisPoints
 }
 
-export type AssetInfo = {
+type pTokenAsset = {
+  /** The name of the asset. */
+  name: string
   /** The chain ID of the asset's blockchain. */
-  networkId: string
+  chainId: string
+  /** Asset symbol */
+  symbol: string
+  /** pToken address. */
+  pTokenAddress: string
+  /** Token's decimals. */
+  decimals: number
+  /** Underlying asset information */
+  underlyingAsset: NativeAsset
+}
+
+type NativeAsset = {
+  /** The name of the asset. */
+  name: string
+  /** The chain ID of the asset's blockchain. */
+  chainId: string
   /** Asset symbol */
   symbol: string
   /** Token smart contract address. */
-  assetTokenAddress?: string
+  tokenAddress: string
   /** Token's decimals. */
   decimals: number
-  /** is a native token. */
-  isNative: boolean
   /** pNetwork address. */
-  pTokenAddress?: string
-  /** Underlying asset decmials*/
-  underlyingAssetName: string
-  /** Underlying asset symbol*/
-  underlyingAssetSymbol: string
-  /** Underlying asset decimals*/
-  underlyingAssetDecimals: number
-  /** Underlying asset token address*/
-  underlyingAssetTokenAddress: string
-  /** Underlying asset network ID */
-  underlyingAssetNetworkId: string
+  pTokenAddress: string
 }
+
+export type AssetInfo = NativeAsset | pTokenAsset
 
 export type SwapResult = {
   txHash: string
-  operationId?: string
+  eventId?: string
 }
 
 export abstract class pTokensAsset {
-  private _factoryAddress: string
-  private _hubAddress: string
-  private _pTokenAddress: string
+  private _adapterAddress: string
   private _assetInfo: AssetInfo
-  private _weight: number
   private _type: BlockchainType
 
   /**
@@ -85,28 +83,18 @@ export abstract class pTokensAsset {
    */
   constructor(_config: pTokenAssetConfig, _type: BlockchainType) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
-    if (networkIdToTypeMap.get(_config.assetInfo.networkId) !== _type) throw new Error('Not supported chain ID')
+    if (this.isPToken(_config.assetInfo))
+      if (_config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress)
+        throw new Error('pToken address does not match underlying asset pToken address')
+    if (networkIdToTypeMap.get(_config.assetInfo.chainId) !== _type) throw new Error('Not supported chain ID')
     this._type = _type
     this._assetInfo = _config.assetInfo
-    this._weight = _config.weight || 1
-    this._factoryAddress = _config.factoryAddress
-    this._hubAddress = _config.hubAddress
-    this._pTokenAddress = _config.pTokenAddress
+    this._adapterAddress = _config.adapterAddress
   }
 
   /** Return the pTokensFactory's address. */
-  get factoryAddress(): string {
-    return this._factoryAddress
-  }
-
-  /** Return the pNetworkHub's address. */
-  get hubAddress(): string {
-    return this._hubAddress
-  }
-
-  /** Return the pNetworkHub's address. */
-  get pTokenAddress(): string {
-    return this._pTokenAddress
+  get adapterAddress(): string {
+    return this._adapterAddress
   }
 
   /** Return the token's symbol. */
@@ -120,28 +108,14 @@ export abstract class pTokensAsset {
   }
 
   /** Return the chain ID of the token. */
-  get networkId(): NetworkId {
-    return this._assetInfo.networkId as NetworkId
-  }
-
-  /** Return the blockchain of the token. */
-  get blockchain(): Blockchain {
-    return maps.chainIdToBlockchainMap.get(this._assetInfo.networkId).blockchain
-  }
-
-  /** Return the blockchain's network of the token. */
-  get network(): Network {
-    return maps.chainIdToBlockchainMap.get(this._assetInfo.networkId).network
+  get networkId(): ChainId {
+    return this._assetInfo.chainId as ChainId
   }
 
   /** Return token smart contract address. */
-  get assetTokenAddress(): string {
-    return this.assetInfo.assetTokenAddress ? this.assetInfo.assetTokenAddress : null
-  }
-
-  /** Return the weight associated to the token during the swap. Its usage is currently not supported. */
-  get weight(): number {
-    return this._weight
+  get assetAddress(): string {
+    if (this.isNative(this._assetInfo)) return this._assetInfo.tokenAddress
+    else return this._assetInfo.pTokenAddress
   }
 
   /** Return technical details related to the token. */
@@ -149,23 +123,22 @@ export abstract class pTokensAsset {
     return this._assetInfo
   }
 
-  /** Return true if asset is native, false otherwise */
-  get isNative(): boolean {
-    return (
-      this._assetInfo.underlyingAssetNetworkId === this._assetInfo.networkId &&
-      this._assetInfo.assetTokenAddress === this._assetInfo.underlyingAssetTokenAddress
-    )
-  }
-
   /** Return the pTokensAssetProvider eventually assigned */
   abstract get provider(): pTokensAssetProvider
 
+  isNative(assetInfo: AssetInfo): assetInfo is NativeAsset {
+    return assetInfo.pTokenAddress === undefined && (assetInfo as pTokenAsset).underlyingAsset === undefined
+  }
+
+  isPToken(assetInfo: AssetInfo): assetInfo is pTokenAsset {
+    return assetInfo.pTokenAddress === (assetInfo as pTokenAsset).underlyingAsset.pTokenAddress
+  }
+
   protected abstract swap(
-    _amount: BigNumber,
-    _destinationAddress: string,
+    _amount: bigint,
+    _recipient: string,
     _destinationChainId: string,
-    _networkFees?: BigNumber,
-    _forwardNetworkFees?: BigNumber,
+    _fees?: bigint,
     _optionsMask?: string,
     _userData?: string,
   ): PromiEvent<SwapResult>
