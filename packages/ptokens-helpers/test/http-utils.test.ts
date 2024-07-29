@@ -9,10 +9,10 @@ describe('Http general tests', () => {
     beforeAll(() => {
       server = createServer((_req, _res) => {
         _res.statusCode = 200
-        if (_req.url.includes('golong')) setTimeout(() => _res.end('data'), 500)
+        if (_req.url && _req.url.includes('golong')) setTimeout(() => _res.end('data'), 500)
         else _res.end('data')
       })
-      server.listen(3000, '127.0.0.1')
+      server.listen(3001, '127.0.0.1')
     })
 
     afterAll(() => {
@@ -21,7 +21,7 @@ describe('Http general tests', () => {
 
     test('Should reject when timeout expires', async () => {
       try {
-        await http.getRequest('http://127.0.0.1:3000/golong', {}, 100)
+        await http.getRequest('http://127.0.0.1:3001/golong', {}, 100)
         fail()
       } catch (err) {
         expect(err.message).toStrictEqual(errors.ERROR_TIMEOUT)
@@ -29,14 +29,14 @@ describe('Http general tests', () => {
     })
 
     test('Should not reject fetching the correct data', async () => {
-      const result = await http.getRequest('http://127.0.0.1:3000', {}, 400)
+      const result = await http.getRequest('http://127.0.0.1:3001', {}, 400)
       const data = await result.text()
       expect(data).toStrictEqual('data')
     })
 
     test('Should reject when timeout expires', async () => {
       try {
-        await http.postRequest('http://127.0.0.1:3000/golong', {}, {}, 100)
+        await http.postRequest('http://127.0.0.1:3001/golong', {}, {}, 100)
         fail()
       } catch (err) {
         expect(err.message).toStrictEqual(errors.ERROR_TIMEOUT)
@@ -53,7 +53,7 @@ describe('Http general tests', () => {
     })
 
     test('Should not reject fetching the correct data', async () => {
-      const result = await http.postRequest('http://127.0.0.1:3000', {}, {}, 400)
+      const result = await http.postRequest('http://127.0.0.1:3001', {}, {}, 400)
       const data = await result.text()
       expect(data).toStrictEqual('data')
     })
@@ -66,13 +66,13 @@ describe('Http general tests', () => {
       server = createServer((_req, _res) => {
         _res.statusCode = 200
         _res.setHeader('Content-Type', 'application/json')
-        if (_req.url.includes('incorrect')) _res.end('{"incorrect": json}')
-        else if (_req.url.includes('error')) {
+        if (_req.url && _req.url.includes('incorrect')) _res.end('{"incorrect": json}')
+        else if (_req.url && _req.url.includes('error')) {
           _res.statusCode = 500
           _res.end('{"incorrect": json}')
         } else _res.end('{"Hello": "World"}')
       })
-      server.listen(3000, '127.0.0.1')
+      server.listen(3002, '127.0.0.1')
     })
 
     afterAll(() => {
@@ -80,14 +80,14 @@ describe('Http general tests', () => {
     })
 
     test('Should not reject performing a GET request', async () => {
-      const result = await http.fetchJsonByGet('http://127.0.0.1:3000')
+      const result = await http.fetchJsonByGet('http://127.0.0.1:3002')
       const expected = { Hello: 'World' }
       expect(result).toStrictEqual(expected)
     })
 
     test('Should reject performing a GET request', async () => {
       try {
-        await http.fetchJsonByGet('http://127.0.0.1:3000/incorrect')
+        await http.fetchJsonByGet('http://127.0.0.1:3002/incorrect')
         fail()
       } catch (err) {
         expect(err.message).toStrictEqual('Failed to extract the json from the response:{"size":0,"timeout":0}')
@@ -96,7 +96,7 @@ describe('Http general tests', () => {
 
     test('Should reject performing a GET request', async () => {
       try {
-        await http.fetchJsonByGet('http://127.0.0.1:3000/error')
+        await http.fetchJsonByGet('http://127.0.0.1:3002/error')
         fail()
       } catch (err) {
         expect(err.message).toStrictEqual("Unexpected HTTP status - '500 Internal Server Error'")
@@ -126,7 +126,7 @@ describe('Http general tests', () => {
           })
         }
       })
-      server.listen(3000, '127.0.0.1')
+      server.listen(3003, '127.0.0.1')
     })
 
     afterAll(() => {
@@ -135,14 +135,14 @@ describe('Http general tests', () => {
 
     test('Should not reject returning the correct response', async () => {
       const body = { hello: 'world' }
-      const result = await http.fetchJsonByPost('http://127.0.0.1:3000', body)
+      const result = await http.fetchJsonByPost('http://127.0.0.1:3003', body)
       expect(result).toStrictEqual(body)
     })
 
     test('Should reject with incorrect output', async () => {
       const body = { hello: 'incorrect' }
       try {
-        await http.fetchJsonByPost('http://127.0.0.1:3000', body)
+        await http.fetchJsonByPost('http://127.0.0.1:3003', body)
         fail()
       } catch (err) {
         expect(err.message).toStrictEqual('Failed to extract the json from the response:{"size":0,"timeout":0}')
@@ -152,7 +152,7 @@ describe('Http general tests', () => {
     test('Should reject with incorrect output', async () => {
       const body = { hello: 'error' }
       try {
-        await http.fetchJsonByPost('http://127.0.0.1:3000', body)
+        await http.fetchJsonByPost('http://127.0.0.1:3003', body)
         fail()
       } catch (err) {
         expect(err.message).toStrictEqual("Unexpected HTTP status - '500 Internal Server Error'")
