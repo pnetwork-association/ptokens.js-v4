@@ -1,13 +1,11 @@
-import { NetworkId } from 'ptokens-constants'
+import { ChainId } from 'ptokens-constants'
 
 import { validators } from '../src/'
 
 describe('chainIdToAddressValidatorMap', () => {
   test('Should get an address validator for every chain ID', () => {
     expect(
-      Object.values(NetworkId).every(
-        (_networkId) => validators.chainIdToAddressValidatorMap.get(_networkId) !== undefined,
-      ),
+      Object.values(ChainId).every((_chainId) => validators.chainIdToAddressValidatorMap.get(_chainId) !== undefined),
     ).toBeTruthy()
   })
 })
@@ -26,13 +24,13 @@ describe('isValidAddressByChainId', () => {
     { address: 'aFf4d6793f584a473348ebA058deb8caad77a2885', expected: false },
   ]
 
-  const addressesToCheck = new Map<NetworkId, { address: string; expected: boolean }[]>([
-    [NetworkId.SepoliaTestnet, evmAddresses],
+  const addressesToCheck = new Map<ChainId, { address: string; expected: boolean }[]>([
+    [ChainId.SepoliaTestnet, evmAddresses],
   ])
 
   test('Should correctly check address validity', () => {
-    expect(Object.values(NetworkId).every((_networkId) => addressesToCheck.get(_networkId) !== undefined)).toBeTruthy()
-    Object.values(NetworkId).map(
+    expect(Object.values(ChainId).every((_networkId) => addressesToCheck.get(_networkId) !== undefined)).toBeTruthy()
+    Object.values(ChainId).map(
       (_networkId) =>
         addressesToCheck
           .get(_networkId)
