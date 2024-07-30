@@ -3,6 +3,23 @@ import { BlockchainType, ChainId, networkIdToTypeMap } from 'ptokens-constants'
 
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
+export type Operation = {
+  blockId: number
+  txId: string
+  nonce: number
+  assetAddress: string
+  originChainId: ChainId
+  destinationChainId: ChainId
+  amount: bigint
+  sender: string
+  data: string
+}
+
+export type Proof = {
+  preimage: string
+  signature: string
+}
+
 export type pTokenAssetConfig = {
   /** An AssetInfo object containing asset technical details. */
   assetInfo: AssetInfo
@@ -143,5 +160,5 @@ export abstract class pTokensAsset {
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  protected abstract monitorCrossChainOperations(_operationId: string): PromiEvent<any>
+  protected abstract settle(_operation: Operation, _proof: Proof): PromiEvent<any>
 }
