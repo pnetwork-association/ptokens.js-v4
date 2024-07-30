@@ -1,6 +1,5 @@
-import BigNumber from 'bignumber.js'
 import PromiEvent from 'promievent'
-import { BlockchainType } from 'ptokens-constants'
+import { BlockchainType, ChainId } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
 import { Log, TransactionReceipt, WalletClient } from 'viem'
 
@@ -42,11 +41,10 @@ export class pTokensEvmAsset extends pTokensAsset {
   }
 
   protected swap(
-    _amount: BigNumber,
-    _destinationAddress: string,
+    _amount: bigint,
+    _recipient: string,
     _destinationChainId: string,
-    _networkFees = BigNumber(0),
-    _forwardNetworkFees = BigNumber(0),
+    _fees = BigInt(0),
     _optionsMask = '0x0000000000000000000000000000000000000000000000000000000000000000',
     _userData = '0x',
   ): PromiEvent<SwapResult> {
@@ -56,26 +54,18 @@ export class pTokensEvmAsset extends pTokensAsset {
           try {
             if (!this._provider) return reject(new Error('Missing provider'))
             const args = [
-              _destinationAddress, // destinationAccount
-              _destinationChainId, // destinationNetworkId
-              this.assetInfo.underlyingAssetName, // underlyingAssetName
-              this.assetInfo.underlyingAssetSymbol, // underlyingAssetSymbol
-              this.assetInfo.underlyingAssetDecimals, // underlyingAssetDecimals
-              this.assetInfo.underlyingAssetTokenAddress, // underlyingAssetTokenAddress
-              this.assetInfo.underlyingAssetNetworkId, // underlyingAssetNetworkId
-              this.assetInfo.assetTokenAddress, // assetTokenAddress
-              onChainFormat(_amount, this.assetInfo.decimals).toString(), // assetAmount
-              _networkFees.toString(), // networkFeeAssetAmount
-              _forwardNetworkFees.toString(), // forwardNetworkFeeAssetAmount
-              _userData, // userData
-              _optionsMask,
+              this.assetAddress,
+              _amount,
+              _destinationChainId,
+              _recipient, // destinationAccount
+              _userData,
             ]
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
                   method: USER_SEND_METHOD,
                   abi: pNetworkHubAbi,
-                  contractAddress: this.hubAddress,
+                  contractAddress: this.adapterAddress,
                   value: 0n,
                 },
                 args,
@@ -97,7 +87,7 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  protected monitorCrossChainOperations(_operationId: string): PromiEvent<Log> {
-    return this.provider.monitorCrossChainOperations(this.hubAddress, _operationId)
+  protected settle(_operation: { blockId: number; txId: string; nonce: number; assetAddress: string; originChainId: ChainId; destinationChainId: ChainId; amount: bigint; sender: string; data: string }, _proof: { preimage: string; signature: string }): PromiEvent<any> {
+    // TODO implement
   }
 }
