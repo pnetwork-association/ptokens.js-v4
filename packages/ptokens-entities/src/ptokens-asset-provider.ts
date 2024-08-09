@@ -8,7 +8,7 @@ export abstract class pTokensAssetProvider {
    */
   abstract waitForTransactionConfirmation(_txHash: string, ...args: any[]): Promise<any>
 
-  abstract monitorCrossChainOperations(_hubAddress: string, _operationId: string): PromiEvent<any>
+  abstract getSwaps(_from: bigint): PromiEvent<boolean>
 
   abstract makeContractCall<R>(...args: any[]): Promise<R>
 }
