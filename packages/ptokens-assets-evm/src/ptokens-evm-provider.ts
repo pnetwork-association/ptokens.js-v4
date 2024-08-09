@@ -1,11 +1,21 @@
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
-import { stringUtils } from 'ptokens-helpers'
-import { Abi, PublicClient, WalletClient, TransactionReceipt, Log, Block, http, createWalletClient } from 'viem'
+import { stringUtils, getters } from 'ptokens-helpers'
+import {
+  Abi,
+  PublicClient,
+  WalletClient,
+  TransactionReceipt,
+  Log,
+  Block,
+  http,
+  createWalletClient,
+  AbiEvent,
+} from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 
-import PNetworkHubAbi from './abi/PNetworkHubAbi'
-import { EVENT_NAMES, formatAddress, getOperationIdFromLog } from './lib/'
+import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
+import { EVENT_NAMES } from './lib/'
 
 export type MakeContractSendOptions = {
   /** The method to be called. */
@@ -31,11 +41,23 @@ export type MakeContractCallOptions = {
   contractAddress: string
 }
 
+export type GetEvents = {
+  fromAddress: `0x${string}`
+  contractAddress: `0x${string}`
+  contractAbi: Abi
+  eventName: EVENT_NAMES
+  fromBlock: bigint
+  toBlock: bigint
+  onLog: (log: Log) => void
+  chunkSize?: bigint
+}
+
 export class pTokensEvmProvider implements pTokensAssetProvider {
   private _publicClient: PublicClient
   private _walletClient: WalletClient
   private _gasPrice: bigint | undefined
   private _gasLimit: bigint | undefined
+  private _chainId: number
 
   /**
    * Create and initialize a pTokensEvmProvider object.
@@ -43,7 +65,9 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _walletClient - A viem wallet client.
    */
   constructor(_publicClient: PublicClient, _walletClient?: WalletClient) {
+    if (!_publicClient.chain) throw new Error(`No chain in specified publicClient: ${_publicClient}`)
     this._publicClient = _publicClient
+    this._chainId = _publicClient.chain.id
     if (_walletClient) this._walletClient = _walletClient
   }
 
@@ -52,6 +76,13 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    */
   get gasPrice() {
     return this._gasPrice
+  }
+
+  /**
+   * Return the gasPrice set with _setGasPrice()_.
+   */
+  get chainId() {
+    return this._chainId
   }
 
   /**
@@ -190,68 +221,92 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    */
   async waitForTransactionConfirmation(_txHash: string, _confirmations: number = 1): Promise<TransactionReceipt> {
     const receipt: TransactionReceipt = await this._publicClient.waitForTransactionReceipt({
-      hash: formatAddress(_txHash),
+      hash: stringUtils.addHexPrefix(_txHash),
       confirmations: _confirmations,
     })
     if (!receipt) throw new Error('No receipt found')
     return receipt
   }
 
-  protected async _watchEvent(
-    _hubAddress: string,
-    _eventName: EVENT_NAMES,
-    _operationId: string,
-    _pollingTime = 1000,
-  ): Promise<Log> {
-    return await new Promise<Log>((resolve, reject) => {
-      try {
-        const stopWatching = this._publicClient.watchContractEvent({
-          address: formatAddress(_hubAddress),
-          abi: PNetworkHubAbi,
-          pollingInterval: _pollingTime,
-          eventName: _eventName,
-          onLogs: (logs) => {
-            const targetLog = logs.find((log) => getOperationIdFromLog(log) === _operationId)
-            if (targetLog) {
-              resolve(targetLog)
-              stopWatching()
-            }
-          },
-          onError: (error) => console.error(error),
-        })
-      } catch (_err) {
-        reject(_err)
-      }
-    })
-  }
-
-  monitorCrossChainOperations(_hubAddress: string, _operationId: string) {
-    const promi = new PromiEvent<Log>(
+  protected async _getEvents(_getEvents: GetEvents): Promise<boolean> {
+    return await new Promise<boolean>(
       (resolve, reject) =>
         (async () => {
           try {
-            await this._watchEvent(_hubAddress, EVENT_NAMES.OPERATION_QUEUED, _operationId).then((_log) => {
-              promi.emit('operationQueued', _log.transactionHash)
-              return _log
+            if (!_getEvents.chunkSize) _getEvents.chunkSize = 1000n
+            const eventAbi = _getEvents.contractAbi.find(
+              (item) => item.type === 'event' && item.name === _getEvents.eventName,
+            ) as AbiEvent
+            if (!eventAbi) {
+              throw new Error(`Event ${_getEvents.eventName} not found in contract ABI`)
+            }
+
+            for (
+              let endBlock = _getEvents.toBlock;
+              endBlock >= _getEvents.fromBlock;
+              endBlock -= _getEvents.chunkSize
+            ) {
+              const startBlock =
+                endBlock - _getEvents.chunkSize + 1n > _getEvents.fromBlock
+                  ? endBlock - _getEvents.chunkSize + 1n
+                  : _getEvents.fromBlock
+
+              // Fetch logs
+              const logs = await this._publicClient.getLogs({
+                address: _getEvents.contractAddress,
+                event: eventAbi,
+                args: {
+                  from: _getEvents.fromAddress,
+                  to: _getEvents.contractAddress,
+                },
+                fromBlock: startBlock,
+                toBlock: endBlock,
+              })
+
+              // Process each log
+              logs.forEach((log) => {
+                _getEvents.onLog(log)
+              })
+            }
+
+            resolve(true)
+          } catch (_err) {
+            reject(_err)
+          }
+        })() as unknown,
+    )
+  }
+
+  getSwaps(_from = 1000n) {
+    //FIXME: add a proper starting point
+    const promi = new PromiEvent<boolean>(
+      (resolve, reject) =>
+        (async () => {
+          try {
+            const chainId = this._publicClient.chain?.id
+            if (!chainId) {
+              throw new Error(`ChainId for ${this._publicClient.account} not found`)
+            }
+            const adapterAddress = getters.getAdapterAddress(chainId)
+            if (!adapterAddress) {
+              throw new Error(`Adapter address for ${chainId} not found`)
+            }
+            const userAddress = this._walletClient.account?.address
+            if (!userAddress) throw new Error('No user account found')
+
+            const res = await this._getEvents({
+              fromAddress: userAddress,
+              contractAddress: stringUtils.addHexPrefix(adapterAddress),
+              contractAbi: PNetworkAdapterAbi,
+              eventName: EVENT_NAMES.SWAP,
+              fromBlock: _from,
+              toBlock: await this._publicClient.getBlockNumber(),
+              onLog: (_log: Log) => {
+                console.log(_log) // TODO: remove only debug logging
+                promi.emit('swap', _log.transactionHash)
+              },
             })
-            const finalTxLog: Log = await Promise.any([
-              this._watchEvent(_hubAddress, EVENT_NAMES.OPERATION_EXECUTED, _operationId).then((_log) => {
-                promi.emit('operationExecuted', _log.transactionHash)
-                return _log
-              }),
-              // TODO: need a way to stop this polling whenever the OPERATION_EXECUTED polling resolves
-              // this._pollForStateManagerOperation(
-              //   _stateManagerAddress,
-              //   EVENT_NAMES.OPERATION_CANCELLED,
-              //   fromBlock,
-              //   _operationId
-              // ).then((_log) => {
-              //   promi.emit('operationCancelled', _log.transactionHash)
-              //   return _log
-              // }),
-            ])
-            if (!finalTxLog) throw new Error('Tx Log do not contain a transaction hash')
-            return resolve(finalTxLog)
+            return resolve(res)
           } catch (_err) {
             return reject(_err)
           }

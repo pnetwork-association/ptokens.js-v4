@@ -1,7 +1,8 @@
 import { BlockchainType } from 'ptokens-constants'
-import { pTokensAssetBuilder } from 'ptokens-entities'
+import { pTokensAssetBuilder, isPToken } from 'ptokens-entities'
+import { getters } from 'ptokens-helpers'
+import { isAddress } from 'viem'
 
-import { getEvmHubAddress, getEvmPToken } from './lib'
 import { pTokenEvmAssetConfig, pTokensEvmAsset } from './ptokens-evm-asset'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
@@ -25,35 +26,26 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
 
   // eslint-disable-next-line @typescript-eslint/require-await
   protected async _build(): Promise<pTokensEvmAsset> {
-    const hubAddress = await getEvmHubAddress(this._networkId, this._provider)
-    const pTokenAddress = await getEvmPToken(this._networkId, this._provider, this.assetInfo)
-    if (this.assetInfo.isNative) {
-      if (this.assetInfo.assetTokenAddress != this.assetInfo.underlyingAssetTokenAddress)
+    this._chainId = this._provider.chainId
+    const adapterAddress = getters.getAdapterAddress(this._chainId)
+    if (!adapterAddress) throw new Error('Adapter address is required')
+    this._adapterAddress = adapterAddress
+    const pTokenAddress = this.assetInfo.pTokenAddress
+    if (pTokenAddress && !isAddress(pTokenAddress))
+      throw new Error(`pTokenAddress ${pTokenAddress} must be a valid address`)
+    if (isPToken(this.assetInfo)) {
+      if (this.assetInfo.pTokenAddress != this.assetInfo.underlyingAsset.tokenAddress)
         throw new Error(
-          `Asset is native but ${this.assetInfo.assetTokenAddress} != ${this.assetInfo.underlyingAssetTokenAddress}`,
+          `pToken cannot be underlying of itself: ${this.assetInfo.pTokenAddress} must be different from ${this.assetInfo.underlyingAsset.tokenAddress}`,
         )
-      if (!this.assetInfo.pTokenAddress) this.assetInfo.pTokenAddress = pTokenAddress
-      if (this.assetInfo.pTokenAddress != pTokenAddress)
-        throw new Error(
-          `Passed pToken is not correct: received -> ${this.assetInfo.pTokenAddress} correct -> ${pTokenAddress}`,
-        )
-    } else {
-      if (this.assetInfo.assetTokenAddress == this.assetInfo.underlyingAssetTokenAddress)
-        throw new Error(
-          `pToken cannot be underlying of itself: ${this.assetInfo.assetTokenAddress} must be different from ${this.assetInfo.underlyingAssetTokenAddress}`,
-        )
-      if (!this.assetInfo.assetTokenAddress) this.assetInfo.assetTokenAddress = pTokenAddress
-      if (this.assetInfo.assetTokenAddress != pTokenAddress)
-        throw new Error(`Asset is pToken but ${this.assetInfo.assetTokenAddress} != ${pTokenAddress}`)
     }
 
     const config: pTokenEvmAssetConfig = {
       assetInfo: this.assetInfo,
       provider: this._provider,
-      factoryAddress: this.factoryAddress,
-      hubAddress: hubAddress,
-      pTokenAddress: pTokenAddress,
+      adapterAddress: this.adapterAddress,
     }
+
     return new pTokensEvmAsset(config)
   }
 }

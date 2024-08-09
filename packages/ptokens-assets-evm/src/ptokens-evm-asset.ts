@@ -1,13 +1,21 @@
 import PromiEvent from 'promievent'
-import { BlockchainType, ChainId } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig, SwapResult } from 'ptokens-entities'
-import { Log, TransactionReceipt, WalletClient } from 'viem'
+import { BlockchainType } from 'ptokens-constants'
+import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
+import { concat, numberToHex, TransactionReceipt, WalletClient } from 'viem'
 
-import pNetworkHubAbi from './abi/PNetworkHubAbi'
-import { getOperationIdFromTransactionReceipt, onChainFormat } from './lib'
+import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
+import {
+  getSwapEventId,
+  getOperationFromLog,
+  getLogFromTransactionReceipt,
+  serializeOperation,
+  decodeAdapterLog,
+  isSettleLog,
+} from './lib'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
-const USER_SEND_METHOD = 'userSend'
+const SWAP_METHOD = 'swap'
+const SETTLE_METHOD = 'settle'
 
 export type pTokenEvmAssetConfig = pTokenAssetConfig & {
   /** An pTokensEvmProvider for interacting with the underlaying blockchain */
@@ -40,12 +48,18 @@ export class pTokensEvmAsset extends pTokensAsset {
     return this
   }
 
+  getContext(): `0x${string}` {
+    const version = numberToHex(this.version)
+    const protocolId = numberToHex(this.protocolId)
+    const chainId = numberToHex(this.chainId, { size: 32 })
+    return concat([version, protocolId, chainId])
+  }
+
   protected swap(
     _amount: bigint,
     _recipient: string,
     _destinationChainId: string,
     _fees = BigInt(0),
-    _optionsMask = '0x0000000000000000000000000000000000000000000000000000000000000000',
     _userData = '0x',
   ): PromiEvent<SwapResult> {
     const promi = new PromiEvent<SwapResult>(
@@ -63,8 +77,8 @@ export class pTokensEvmAsset extends pTokensAsset {
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
-                  method: USER_SEND_METHOD,
-                  abi: pNetworkHubAbi,
+                  method: SWAP_METHOD,
+                  abi: PNetworkAdapterAbi,
                   contractAddress: this.adapterAddress,
                   value: 0n,
                 },
@@ -73,9 +87,11 @@ export class pTokensEvmAsset extends pTokensAsset {
               .once('txBroadcasted', (_hash: string) => {
                 promi.emit('txBroadcasted', { txHash: _hash })
               })
+            const swapLog = getLogFromTransactionReceipt(txReceipt)
             const ret = {
               txHash: txReceipt.transactionHash.toString(),
-              operationId: getOperationIdFromTransactionReceipt(this.networkId, txReceipt),
+              operation: getOperationFromLog(swapLog, this.chainId),
+              eventId: getSwapEventId(swapLog, this.getContext()),
             }
             promi.emit('txConfirmed', ret)
             return resolve(ret)
@@ -87,7 +103,44 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  protected settle(_operation: { blockId: number; txId: string; nonce: number; assetAddress: string; originChainId: ChainId; destinationChainId: ChainId; amount: bigint; sender: string; data: string }, _proof: { preimage: string; signature: string }): PromiEvent<any> {
-    // TODO implement
+  protected getProofMetadata(_swapTxHash: string, _chainId: number): Promise<Metadata> {
+    throw new Error('Method not implemented.')
+  }
+
+  protected settle(_operation: Operation, _metadata: Metadata): PromiEvent<any> {
+    const promi = new PromiEvent<SettleResult>(
+      (resolve, reject) =>
+        (async () => {
+          try {
+            if (!this._provider) return reject(new Error('Missing provider'))
+            const args = [serializeOperation(_operation), [_metadata.preimage, _metadata.signature]]
+            const txReceipt: TransactionReceipt = await this._provider
+              .makeContractSend(
+                {
+                  method: SETTLE_METHOD,
+                  abi: PNetworkAdapterAbi,
+                  contractAddress: this.adapterAddress,
+                  value: 0n,
+                },
+                args,
+              )
+              .once('txBroadcasted', (_hash: string) => {
+                promi.emit('txBroadcasted', { txHash: _hash })
+              })
+            const settleLog = getLogFromTransactionReceipt(txReceipt)
+            const decodedLogArgs = decodeAdapterLog(settleLog)
+            if (!isSettleLog(decodedLogArgs)) throw new Error('Invalid settle event log format')
+            const ret = {
+              txHash: txReceipt.transactionHash.toString(),
+              eventId: decodedLogArgs.eventId,
+            }
+            promi.emit('txConfirmed', ret)
+            return resolve(ret)
+          } catch (_err) {
+            return reject(_err)
+          }
+        })() as unknown,
+    )
+    return promi
   }
 }
