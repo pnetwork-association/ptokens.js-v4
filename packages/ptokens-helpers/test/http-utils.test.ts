@@ -30,7 +30,7 @@ describe('Http general tests', () => {
 
     test('Should not reject fetching the correct data', async () => {
       const result = await http.getRequest('http://127.0.0.1:3001', {}, 400)
-      const data = await result.text()
+      const data = await result?.text()
       expect(data).toStrictEqual('data')
     })
 
