@@ -1,16 +1,18 @@
-import { BlockchainType, networkIdToTypeMap, AdapterAddress, ChainId } from 'ptokens-constants'
-import { validators } from 'ptokens-helpers'
+import { BlockchainType } from 'ptokens-constants'
+import { validators, getters } from 'ptokens-helpers'
 
-import { AssetInfo, pTokensAsset } from './ptokens-asset'
+import { AssetInfo } from './lib'
+import { pTokensAsset } from './ptokens-asset'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
 export abstract class pTokensAssetBuilder {
   protected _decimals: number
-  protected _weight: number
-  protected _chainId: ChainId
+  protected _chainId: number
   protected _assetInfo: AssetInfo
   private _type: BlockchainType
   protected _adapterAddress: string
+  protected _version: string
+  protected _protocolId: string
 
   /**
    * Create and initialize a pTokensAssetBuilder object.
@@ -21,22 +23,11 @@ export abstract class pTokensAssetBuilder {
   }
 
   /**
-   * Set a weight for the asset during the swap. Its usage is currently not supported.
-   * @param _weight - A weight for the token.
-   * @returns The same builder. This allows methods chaining.
-   */
-  setWeight(_weight: number) {
-    this._weight = _weight
-    return this
-  }
-
-  /**
    * Set the blockchain chain ID for the token.
    * @param _chainId - The chain ID.
    * @returns The same builder. This allows methods chaining.
    */
-  setBlockchain(_chainId: ChainId) {
-    if (networkIdToTypeMap.get(_chainId) !== this._type) throw new Error('Unsupported chain ID')
+  setChainId(_chainId: number) {
     this._chainId = _chainId
     return this
   }
@@ -57,6 +48,26 @@ export abstract class pTokensAssetBuilder {
     return this._assetInfo
   }
 
+  /**
+   * Set the version for the token.
+   * @param _version - The token version.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setVersion(_version: string) {
+    this._version = _version
+    return this
+  }
+
+  /**
+   * Set the protocolId for the token.
+   * @param _protocolId - The token protocolId.
+   * @returns The same builder. This allows methods chaining.
+   */
+  setProtocolId(_protocolId: string) {
+    this._protocolId = _protocolId
+    return this
+  }
+
   setAssetInfo(_assetInfo: AssetInfo) {
     this._assetInfo = _assetInfo
     return this
@@ -66,7 +77,7 @@ export abstract class pTokensAssetBuilder {
    * Return the router address for the swap.
    */
   get adapterAddress(): string {
-    return this._adapterAddress || AdapterAddress.get(this._assetInfo.chainId as ChainId)
+    return this._adapterAddress || getters.getAdapterAddress(this._assetInfo.chainId)
   }
 
   /**
@@ -87,9 +98,10 @@ export abstract class pTokensAssetBuilder {
   private validate() {
     if (!this._chainId) throw new Error('Missing chain ID')
     if (!this._assetInfo) throw new Error('Missing asset info')
-    if (!this.adapterAddress) throw new Error('Missing adapter address')
-    if (!validators.isValidAddressByChainId(this.adapterAddress, this._chainId))
-      throw new Error('Invalid factory address')
+    if (!this._adapterAddress) throw new Error('Missing adapter address')
+    if (!this._version) throw new Error('Missing version')
+    if (!this._protocolId) throw new Error('Missing protocol ID')
+    if (!validators.isValidAddressByChainId(this.adapterAddress, this._type)) throw new Error('Invalid factory address')
     if (this._decimals !== undefined) this._assetInfo.decimals = this._decimals
   }
 

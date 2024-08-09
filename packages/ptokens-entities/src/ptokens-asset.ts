@@ -1,24 +1,8 @@
 import PromiEvent from 'promievent'
-import { BlockchainType, ChainId, networkIdToTypeMap } from 'ptokens-constants'
+import { BlockchainType } from 'ptokens-constants'
 
+import { Operation, Metadata, AssetInfo, isNative, isPToken } from './lib'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
-
-export type Operation = {
-  blockId: number
-  txId: string
-  nonce: number
-  assetAddress: string
-  originChainId: ChainId
-  destinationChainId: ChainId
-  amount: bigint
-  sender: string
-  data: string
-}
-
-export type Proof = {
-  preimage: string
-  signature: string
-}
 
 export type pTokenAssetConfig = {
   /** An AssetInfo object containing asset technical details. */
@@ -53,57 +37,32 @@ export type AssetFees = {
   basisPoints: NativeToXBasisPoints | HostToXBasisPoints
 }
 
-type pTokenAsset = {
-  /** The name of the asset. */
-  name: string
-  /** The chain ID of the asset's blockchain. */
-  chainId: string
-  /** Asset symbol */
-  symbol: string
-  /** pToken address. */
-  pTokenAddress: string
-  /** Token's decimals. */
-  decimals: number
-  /** Underlying asset information */
-  underlyingAsset: NativeAsset
-}
-
-type NativeAsset = {
-  /** The name of the asset. */
-  name: string
-  /** The chain ID of the asset's blockchain. */
-  chainId: string
-  /** Asset symbol */
-  symbol: string
-  /** Token smart contract address. */
-  tokenAddress: string
-  /** Token's decimals. */
-  decimals: number
-  /** pNetwork address. */
-  pTokenAddress: string
-}
-
-export type AssetInfo = NativeAsset | pTokenAsset
-
 export type SwapResult = {
   txHash: string
+  operation: Operation
   eventId?: string
+}
+
+export type SettleResult = {
+  txHash: string
+  eventId: string
 }
 
 export abstract class pTokensAsset {
   private _adapterAddress: string
   private _assetInfo: AssetInfo
   private _type: BlockchainType
+  private _version: number
+  private _protocolId: number
 
   /**
    * Create and initialize a pTokensAsset object. pTokensAsset objects shall be created with a pTokensAssetBuilder instance.
    */
   constructor(_config: pTokenAssetConfig, _type: BlockchainType) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
-    if (this.isPToken(_config.assetInfo))
+    if (isPToken(_config.assetInfo))
       if (_config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress)
         throw new Error('pToken address does not match underlying asset pToken address')
-    if (networkIdToTypeMap.get(_config.assetInfo.chainId) !== _type) throw new Error('Not supported chain ID')
     this._type = _type
     this._assetInfo = _config.assetInfo
     this._adapterAddress = _config.adapterAddress
@@ -124,14 +83,24 @@ export abstract class pTokensAsset {
     return this._type
   }
 
+  /** Return the token's protocolId. */
+  get protocolId(): number {
+    return this._protocolId
+  }
+
+  /** Return the token's version. */
+  get version(): number {
+    return this._version
+  }
+
   /** Return the chain ID of the token. */
-  get networkId(): ChainId {
-    return this._assetInfo.chainId as ChainId
+  get chainId(): number {
+    return this._assetInfo.chainId
   }
 
   /** Return token smart contract address. */
   get assetAddress(): string {
-    if (this.isNative(this._assetInfo)) return this._assetInfo.tokenAddress
+    if (isNative(this._assetInfo)) return this._assetInfo.tokenAddress
     else return this._assetInfo.pTokenAddress
   }
 
@@ -143,22 +112,15 @@ export abstract class pTokensAsset {
   /** Return the pTokensAssetProvider eventually assigned */
   abstract get provider(): pTokensAssetProvider
 
-  isNative(assetInfo: AssetInfo): assetInfo is NativeAsset {
-    return assetInfo.pTokenAddress === undefined && (assetInfo as pTokenAsset).underlyingAsset === undefined
-  }
-
-  isPToken(assetInfo: AssetInfo): assetInfo is pTokenAsset {
-    return assetInfo.pTokenAddress === (assetInfo as pTokenAsset).underlyingAsset.pTokenAddress
-  }
-
   protected abstract swap(
     _amount: bigint,
-    _recipient: string,
     _destinationChainId: string,
+    _recipient: string,
     _fees?: bigint,
-    _optionsMask?: string,
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  protected abstract settle(_operation: Operation, _proof: Proof): PromiEvent<any>
+  protected abstract getProofMetadata(_swapTxHash: string, _chainId: number): Promise<Metadata>
+
+  protected abstract settle(_operation: Operation, _metadata: Metadata): PromiEvent<any>
 }
