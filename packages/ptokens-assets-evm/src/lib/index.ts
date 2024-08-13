@@ -5,12 +5,7 @@ import {
   Log,
   decodeEventLog,
   toEventSelector,
-  Chain,
   TransactionReceipt,
-  createPublicClient,
-  http,
-  decodeAbiParameters,
-  parseAbiParameters,
   slice,
   hexToNumber,
   hexToString,
@@ -22,15 +17,15 @@ import {
 } from 'viem'
 
 import pNetworkAdapterAbi from '../abi/PNetworkAdapterAbi'
-import { pTokensEvmProvider } from '../ptokens-evm-provider'
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 export enum EVENT_NAMES {
   SWAP = 'Swap',
-  SWAP_NATIVE = 'SwapNative',
   SETTLE = 'Settled',
 }
+
+const SLOT = 32
 
 const events = pNetworkAdapterAbi.filter(({ type }) => type === 'event') as AbiEvent[]
 
@@ -57,8 +52,8 @@ export const getEventPreImage = (_log: Log, _context: `0x${string}`): `0x${strin
 export const getSwapEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
   sha256(getEventPreImage(_log, _context), 'hex')
 
-export const getSettleEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
-  sha256(getEventPreImage(_log, _context), 'hex') // is this correct?
+// export const getSettleEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
+//   sha256(getEventPreImage(_log, _context), 'hex') // is this correct?
 
 export const serializeOperation = (operation: Operation) => [
   operation.blockId,
@@ -91,7 +86,7 @@ export const decodeAdapterLog = (_log: Log) => {
 }
 
 export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
-  const SIX_WORDS_LENGTH = 32 * 6
+  let offset = 0
 
   if (!_log.blockHash) throw new Error('blockHash not retreived correctly')
   if (!_log.transactionHash) throw new Error('transactionHash not retreived correctly')
@@ -100,22 +95,21 @@ export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
   if (!isSwapLog(decodedLogArgs)) throw new Error('Invalid swap event log format')
   const { nonce, eventBytes } = decodedLogArgs
 
-  const [decodedNonce, erc20, destinationChainId, amountTransferred, sender, hexRecipientLength] = decodeAbiParameters(
-    parseAbiParameters('bytes32, bytes32, bytes32, bytes32, bytes32, bytes32'),
-    slice(eventBytes.content, 0, SIX_WORDS_LENGTH),
-  )
+  const decodedNonce = slice(eventBytes.content, offset, (offset += SLOT))
+  const erc20 = slice(eventBytes.content, offset, (offset += SLOT))
+  const destinationChainId = slice(eventBytes.content, offset, (offset += SLOT))
+  const amountTransferred = slice(eventBytes.content, offset, (offset += SLOT))
+  const sender = slice(eventBytes.content, offset, (offset += SLOT))
+  const hexRecipientLength = slice(eventBytes.content, offset, (offset += SLOT))
 
   if (hexToBigInt(decodedNonce) != nonce)
     throw new Error(`nonce: ${nonce} and decodedNonce: ${decodedNonce} must be equal`)
 
   const recipientLength = hexToNumber(hexRecipientLength, { size: 32 })
-  const recipient = hexToString(slice(eventBytes.content, SIX_WORDS_LENGTH, SIX_WORDS_LENGTH + recipientLength), {
+  const recipient = hexToString(slice(eventBytes.content, offset, (offset += recipientLength)), {
     size: recipientLength,
   })
-  const data =
-    size(eventBytes.content) > SIX_WORDS_LENGTH + recipientLength
-      ? slice(eventBytes.content, SIX_WORDS_LENGTH + recipientLength)
-      : '0x'
+  const data = size(eventBytes.content) > offset ? slice(eventBytes.content, offset) : '0x'
 
   return {
     blockId: _log.blockHash,
@@ -135,7 +129,6 @@ export const getLogFromTransactionReceipt = (_swapReceipt: TransactionReceipt<bi
   const swapLog = _swapReceipt.logs.find(
     (_log) =>
       _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SWAP) ||
-      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SWAP_NATIVE) ||
       _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SETTLE),
   )
   if (!swapLog) throw new Error('No valid event in the receipt logs')
@@ -150,10 +143,10 @@ export const getOperationFromTransactionReceipt = (
   return getOperationFromLog(swapLog, _chainId)
 }
 
-export const getDefaultEvmProvider = (_chain: Chain) =>
-  new pTokensEvmProvider(
-    createPublicClient({
-      chain: _chain,
-      transport: http(),
-    }),
-  )
+// export const getDefaultEvmProvider = (_chain: Chain) =>
+//   new pTokensEvmProvider(
+//     createPublicClient({
+//       chain: _chain,
+//       transport: http(),
+//     }),
+//   )
