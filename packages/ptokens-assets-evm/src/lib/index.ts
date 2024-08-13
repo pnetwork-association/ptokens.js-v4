@@ -49,16 +49,16 @@ export const getEventPayload = (_log: Log): `0x${string}` => {
 }
 
 export const getEventPreImage = (_log: Log, _context: `0x${string}`): `0x${string}` => {
-  if (!_log.blockHash) throw new Error('No block hash')
-  if (!_log.transactionHash) throw new Error('No transaction hash')
+  if (!_log.blockHash) throw new Error('Missing block hash')
+  if (!_log.transactionHash) throw new Error('Missing transaction hash')
   return concat([_context, _log.blockHash, _log.transactionHash, getEventPayload(_log)])
 }
 
 export const getSwapEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
   sha256(getEventPreImage(_log, _context), 'hex')
 
-export const getEventIdFromSettle = (_log: Log, _context: `0x${string}`): `0x${string}` =>
-  sha256(getEventPreImage(_log, _context), 'hex')
+export const getSettleEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
+  sha256(getEventPreImage(_log, _context), 'hex') // is this correct?
 
 export const serializeOperation = (operation: Operation) => [
   operation.blockId,
@@ -86,7 +86,6 @@ export const decodeAdapterLog = (_log: Log) => {
     abi: pNetworkAdapterAbi,
     ..._log,
   })
-
   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return decodedLog.args
 }
@@ -108,8 +107,6 @@ export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
 
   if (hexToBigInt(decodedNonce) != nonce)
     throw new Error(`nonce: ${nonce} and decodedNonce: ${decodedNonce} must be equal`)
-
-  // if (!isChainIdSupported(destinationChainId)) throw new Error(`Not supported destination chain: ${destinationChainId}`)
 
   const recipientLength = hexToNumber(hexRecipientLength, { size: 32 })
   const recipient = hexToString(slice(eventBytes.content, SIX_WORDS_LENGTH, SIX_WORDS_LENGTH + recipientLength), {
