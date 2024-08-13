@@ -6,7 +6,7 @@ const validatorFunction =
   (_address: string) =>
     validate(_address, _blockchain, _network)
 
-export const chainTypeToAddressValidatorMap: Map<BlockchainType, (_address: string) => boolean> = new Map([
+export const chainTypeToAddressValidatorMap = new Map<BlockchainType, (_address: string) => boolean>([
   [BlockchainType.EVM, validatorFunction('eth')],
 ])
 

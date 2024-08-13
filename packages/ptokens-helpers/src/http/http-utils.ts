@@ -62,7 +62,7 @@ function checkResponseStatus(_resp: Response) {
 export async function fetchJsonByGet<T>(
   _url: string,
   _headers: HeadersInit | undefined = {},
-  _timeout = 2000
+  _timeout = 2000,
 ): Promise<T> {
   const resp = await getRequest(_url, _headers, _timeout)
   checkResponseStatus(resp)
@@ -73,7 +73,7 @@ export async function fetchJsonByPost<T>(
   _url: string,
   _body,
   _headers: HeadersInit | undefined = { 'Content-Type': 'application/json' },
-  _timeout = 2000
+  _timeout = 2000,
 ): Promise<T> {
   const resp = await postRequest(_url, _body, _headers, _timeout)
   checkResponseStatus(resp)
