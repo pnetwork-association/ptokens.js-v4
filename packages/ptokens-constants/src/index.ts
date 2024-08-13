@@ -17,11 +17,9 @@ export const Versions = {
 
 export enum BlockchainType {
   EVM,
-  EOSIO,
-  UTXO,
-  ALGORAND,
 }
 
 export const AdapterAddress = new Map<Chain, string>([
   [Chain.SepoliaTestnet, '0x87415715056DA7A5EB1a30E53C4F4d20B44DB71D'],
+  [Chain.Mainnet, '0x55555715056DA7A5EB1a30E53C4F4d20B4455555'], // FIXME: placeholder
 ])
