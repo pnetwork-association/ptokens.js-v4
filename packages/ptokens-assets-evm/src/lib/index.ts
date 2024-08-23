@@ -38,9 +38,10 @@ export const eventNameToSignatureMap = new Map<string, string>(
 
 export const getEventPayload = (_log: Log): `0x${string}` => {
   const decodedLogArgs = decodeAdapterLog(_log)
+  const topics = [0, 1, 2, 3].map((i) => (_log.topics[i] as `0x${string}`) || pad('0x0'))
   if (!isSwapLog(decodedLogArgs)) throw new Error('Invalid swap event log format')
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  return concat([pad(_log.address), sha256(concat(_log.topics), 'hex'), decodedLogArgs.eventBytes.content])
+  return concat([pad(_log.address), ...topics, _log.data])
 }
 
 export const getEventPreImage = (_log: Log, _context: `0x${string}`): `0x${string}` => {
