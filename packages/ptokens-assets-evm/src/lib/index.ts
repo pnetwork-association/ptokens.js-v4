@@ -1,6 +1,5 @@
 import { AbiEvent } from 'abitype'
 import { Operation } from 'ptokens-entities'
-import { stringUtils } from 'ptokens-helpers'
 import {
   Log,
   decodeEventLog,
@@ -14,6 +13,7 @@ import {
   concat,
   pad,
   sha256,
+  numberToHex,
 } from 'viem'
 
 import pNetworkAdapterAbi from '../abi/PNetworkAdapterAbi'
@@ -120,7 +120,7 @@ export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
     txId: _log.transactionHash,
     nonce: nonce,
     erc20: erc20,
-    originChainId: pad(stringUtils.addHexPrefix(String(_chainId))),
+    originChainId: pad(numberToHex(_chainId)),
     destinationChainId: pad(destinationChainId),
     amount: hexToBigInt(amountTransferred),
     sender: sender,
