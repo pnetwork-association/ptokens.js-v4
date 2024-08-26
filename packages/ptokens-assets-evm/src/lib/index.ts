@@ -50,7 +50,7 @@ export const getEventPreImage = (_log: Log, _context: `0x${string}`): `0x${strin
   return concat([_context, _log.blockHash, _log.transactionHash, getEventPayload(_log)])
 }
 
-export const getSwapEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
+export const getEventIdFromSwapLog = (_log: Log, _context: `0x${string}`): `0x${string}` =>
   sha256(getEventPreImage(_log, _context), 'hex')
 
 export const getEventIdFromSettleLog = (_log: Log): `0x${string}` => {
