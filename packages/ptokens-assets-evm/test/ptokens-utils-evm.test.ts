@@ -14,10 +14,10 @@ const CONTEXT = {
   bsc: '0x01010000000000000000000000000000000000000000000000000000000000000038',
 }
 
-const peginSwap = swapReceipt[0]
-const pegoutSwap = swapReceipt[1]
-const peginSettle = settleReceipt[0]
-const pegoutSettle = settleReceipt[1]
+const peginSwap = swapReceipt[0] as unknown as TransactionReceipt
+const pegoutSwap = swapReceipt[1] as unknown as TransactionReceipt
+const peginSettle = settleReceipt[0] as unknown as TransactionReceipt
+const pegoutSettle = settleReceipt[1] as unknown as TransactionReceipt
 const peginSwapLog = peginSwap.logs[8] as unknown as Log
 const pegoutSwapLog = pegoutSwap.logs[2] as unknown as Log
 const peginSettleLog = peginSettle.logs[1] as unknown as Log
@@ -112,14 +112,14 @@ describe('ethereum utilities', () => {
     })
   })
 
-  describe('getSwapEventId', () => {
+  describe('getEventIdFromSwapLog', () => {
     it.each([
       [peginSwapLog, CONTEXT.eth, eap[0].eventid],
       [pegoutSwapLog, CONTEXT.bsc, eap[1].eventid],
     ])(
       'should return the correct eventId when swap log and context are provided',
       (_log, _context, _expectedEventId) => {
-        const eventId = utils.getSwapEventId(_log, _context as `0x${string}`)
+        const eventId = utils.getEventIdFromSwapLog(_log, _context as `0x${string}`)
         expect(eventId).toEqual(_expectedEventId)
       },
     )
@@ -209,10 +209,14 @@ describe('ethereum utilities', () => {
   })
 
   describe('getLogFromTransactionReceipt', () => {
-    it('should return swap log from transcation receipt', () => {
-      const log: Log = utils.getLogFromTransactionReceipt(swapReceipt[0] as unknown as TransactionReceipt)
-      const expectedLog = peginSwapLog
-      expect(log).toStrictEqual(expectedLog)
+    it.each([
+      [peginSwap, peginSwapLog],
+      [pegoutSwap, pegoutSwapLog],
+      [peginSettle, peginSettleLog],
+      [pegoutSettle, pegoutSettleLog],
+    ])('should return swap log from transcation receipt', (_receipt, _expectedLog) => {
+      const log: Log = utils.getLogFromTransactionReceipt(_receipt)
+      expect(log).toStrictEqual(_expectedLog)
     })
 
     it('should throw if not a swap receipt', () => {
