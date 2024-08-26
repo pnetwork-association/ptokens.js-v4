@@ -53,8 +53,11 @@ export const getEventPreImage = (_log: Log, _context: `0x${string}`): `0x${strin
 export const getSwapEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
   sha256(getEventPreImage(_log, _context), 'hex')
 
-// export const getSettleEventId = (_log: Log, _context: `0x${string}`): `0x${string}` =>
-//   sha256(getEventPreImage(_log, _context), 'hex') // is this correct?
+export const getEventIdFromSettleLog = (_log: Log): `0x${string}` => {
+  const decodedLogArgs = decodeAdapterLog(_log)
+  if (!isSettleLog(decodedLogArgs)) throw new Error('Invalid settle event log format')
+  return decodedLogArgs.eventId
+}
 
 export const serializeOperation = (operation: Operation) => [
   operation.blockId,
@@ -127,13 +130,13 @@ export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
 }
 
 export const getLogFromTransactionReceipt = (_swapReceipt: TransactionReceipt<bigint>) => {
-  const swapLog = _swapReceipt.logs.find(
+  const log = _swapReceipt.logs.find(
     (_log) =>
       _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SWAP) ||
       _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SETTLE),
   )
-  if (!swapLog) throw new Error('No valid event in the receipt logs')
-  return swapLog
+  if (!log) throw new Error('No valid event in the receipt logs')
+  return log
 }
 
 export const getOperationFromTransactionReceipt = (
