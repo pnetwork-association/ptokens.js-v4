@@ -1,6 +1,6 @@
 import { Operation } from 'ptokens-entities'
 import { concat, Log, pad, TransactionReceipt } from 'viem'
-import { mainnet } from 'viem/chains'
+import { bsc, mainnet } from 'viem/chains'
 
 import * as utils from '../src/lib'
 
@@ -9,15 +9,21 @@ import settleReceipt from './utils/settleReceipt.json'
 import swapReceipt from './utils/swapReceipt.json'
 import wrongReceipt from './utils/wrongReceipt.json'
 
-const CONTEXT = [
-  '0x01010000000000000000000000000000000000000000000000000000000000000001',
-  '0x01010000000000000000000000000000000000000000000000000000000000000038',
-]
+const CONTEXT = {
+  eth: '0x01010000000000000000000000000000000000000000000000000000000000000001',
+  bsc: '0x01010000000000000000000000000000000000000000000000000000000000000038',
+}
 
-const peginSwapLog = swapReceipt[0].logs[8] as unknown as Log
-const peginSettleLog = settleReceipt[0].logs[1] as unknown as Log
+const peginSwap = swapReceipt[0]
+const pegoutSwap = swapReceipt[1]
+const peginSettle = settleReceipt[0]
+const pegoutSettle = settleReceipt[1]
+const peginSwapLog = peginSwap.logs[8] as unknown as Log
+const pegoutSwapLog = pegoutSwap.logs[2] as unknown as Log
+const peginSettleLog = peginSettle.logs[1] as unknown as Log
+const pegoutSettleLog = pegoutSettle.logs[8] as unknown as Log
 
-const expectedOperation = {
+const peginExpectedOperation = {
   blockId: '0xa898367bfed3cfe01bb518a718e31affa774e4380effb09b8e8ce3ad498c83f6',
   txId: '0x36242dcbc54db506555d65aa13a16946054d0bdb66102130ab105573e43ccb7c',
   nonce: 5n,
@@ -28,6 +34,19 @@ const expectedOperation = {
   sender: '0x000000000000000000000000a0ee7a142d267c1f36714e4a8f75612f20a79720',
   recipient: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
   data: '0x',
+}
+
+const pegoutExpectedOperation = {
+  blockId: '0x96c4c1772961ba7dd3dd4c098c652e86bbf15b91f734562e04617d0a90ff7325',
+  txId: '0xcc148487ba556797603f87abc2c74f105c73650af0ee6cee6d06dba48aa24f2d',
+  nonce: 0n,
+  erc20: '0x000000000000000000000000700b6a60ce7eaaea56f065753d8dcb9653dbad35',
+  originChainId: '0x0000000000000000000000000000000000000000000000000000000000000038',
+  destinationChainId: '0x0000000000000000000000000000000000000000000000000000000000000001',
+  amount: 5888100000000000000n,
+  sender: '0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266',
+  recipient: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+  data: '0xc0de',
 }
 
 describe('ethereum utilities', () => {
@@ -65,7 +84,7 @@ describe('ethereum utilities', () => {
     it('should throw if blockHash is not in log', () => {
       try {
         const log = peginSwapLog
-        utils.getEventPreImage({ ...log, blockHash: null }, CONTEXT[0] as `0x${string}`)
+        utils.getEventPreImage({ ...log, blockHash: null }, CONTEXT.eth as `0x${string}`)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -76,7 +95,7 @@ describe('ethereum utilities', () => {
     it('should throw if transactionHash is not in log', () => {
       try {
         const log = peginSwapLog
-        utils.getEventPreImage({ ...log, transactionHash: null }, CONTEXT[0] as `0x${string}`)
+        utils.getEventPreImage({ ...log, transactionHash: null }, CONTEXT.eth as `0x${string}`)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -84,26 +103,35 @@ describe('ethereum utilities', () => {
       }
     })
 
-    it('should return the preimage given log and context', () => {
-      const log = peginSwapLog
-      const preimage = utils.getEventPreImage(log, CONTEXT[0] as `0x${string}`)
-      expect(preimage).toEqual(eap[0].preimage)
+    it.each([
+      [peginSwapLog, CONTEXT.eth, eap[0].preimage],
+      [pegoutSwapLog, CONTEXT.bsc, eap[1].preimage],
+    ])('should return the preimage given swap log and context', (_log, _context, _expectedPreimage) => {
+      const preimage = utils.getEventPreImage(_log, _context as `0x${string}`)
+      expect(preimage).toEqual(_expectedPreimage)
     })
   })
 
   describe('getSwapEventId', () => {
-    it('should return the correct eventId when swap log and context are provided', () => {
-      const log = peginSwapLog
-      const eventId = utils.getSwapEventId(log, CONTEXT[0] as `0x${string}`)
-      expect(eventId).toEqual(eap[0].eventid)
-    })
+    it.each([
+      [peginSwapLog, CONTEXT.eth, eap[0].eventid],
+      [pegoutSwapLog, CONTEXT.bsc, eap[1].eventid],
+    ])(
+      'should return the correct eventId when swap log and context are provided',
+      (_log, _context, _expectedEventId) => {
+        const eventId = utils.getSwapEventId(_log, _context as `0x${string}`)
+        expect(eventId).toEqual(_expectedEventId)
+      },
+    )
   })
 
   describe('getEventIdFromSettleLog', () => {
-    it('should return the correct eventId from settle log', () => {
-      const log = peginSettleLog
-      const eventId = utils.getEventIdFromSettleLog(log)
-      expect(eventId).toEqual(eap[0].eventid)
+    it.each([
+      [peginSettleLog, eap[0].eventid],
+      [pegoutSettleLog, eap[1].eventid],
+    ])('should return the correct eventId from settle log', (_log, _expectedEventId) => {
+      const eventId = utils.getEventIdFromSettleLog(_log)
+      expect(eventId).toEqual(_expectedEventId)
     })
 
     it('should throw if log is not a settle log', () => {
@@ -119,10 +147,12 @@ describe('ethereum utilities', () => {
   })
 
   describe('getOperationFromLog', () => {
-    it('should return the correct eventId when log and context are provided', () => {
-      const log = peginSwapLog
-      const operation = utils.getOperationFromLog(log, mainnet.id)
-      expect(operation).toEqual(expectedOperation)
+    it.each([
+      [peginSwapLog, mainnet.id, peginExpectedOperation],
+      [pegoutSwapLog, bsc.id, pegoutExpectedOperation],
+    ])('should return the correct eventId when log and context are provided', (_log, _chainId, _expectedOperation) => {
+      const operation = utils.getOperationFromLog(_log, _chainId)
+      expect(operation).toEqual(_expectedOperation)
     })
 
     it('should throw if blockHash is not in log', () => {
@@ -197,12 +227,15 @@ describe('ethereum utilities', () => {
   })
 
   describe('getOperationFromTransactionReceipt', () => {
-    it('should return operation from transcation receipt', () => {
+    it.each([
+      [peginSwap, mainnet.id, peginExpectedOperation],
+      [pegoutSwap, bsc.id, pegoutExpectedOperation],
+    ])('should return operation from transcation receipt', (_receipt, _chainId, _expectedOperation) => {
       const operation: Operation = utils.getOperationFromTransactionReceipt(
-        mainnet.id,
-        swapReceipt[0] as unknown as TransactionReceipt,
+        _chainId,
+        _receipt as unknown as TransactionReceipt,
       )
-      expect(operation).toStrictEqual(expectedOperation)
+      expect(operation).toStrictEqual(_expectedOperation)
     })
   })
 })
