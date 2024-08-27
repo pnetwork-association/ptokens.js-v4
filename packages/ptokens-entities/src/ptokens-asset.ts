@@ -1,7 +1,7 @@
 import PromiEvent from 'promievent'
 import { BlockchainType } from 'ptokens-constants'
 
-import { Operation, Metadata, AssetInfo, isNative, isPToken } from './lib'
+import { Operation, Metadata, AssetInfo } from './lib'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
 export type pTokenAssetConfig = {
@@ -60,7 +60,7 @@ export abstract class pTokensAsset {
    */
   constructor(_config: pTokenAssetConfig, _type: BlockchainType) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
-    if (isPToken(_config.assetInfo))
+    if (_config.assetInfo.isNative === false)
       if (_config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress)
         throw new Error('pToken address does not match underlying asset pToken address')
     this._type = _type
@@ -100,13 +100,18 @@ export abstract class pTokensAsset {
 
   /** Return token smart contract address. */
   get assetAddress(): string {
-    if (isNative(this._assetInfo)) return this._assetInfo.tokenAddress
+    if (this._assetInfo.isNative) return this._assetInfo.tokenAddress
     else return this._assetInfo.pTokenAddress
   }
 
   /** Return technical details related to the token. */
   get assetInfo(): AssetInfo {
     return this._assetInfo
+  }
+
+  /** Return if the token is native or pToken. */
+  get isNative(): boolean {
+    return this._assetInfo.isNative
   }
 
   /** Return the pTokensAssetProvider eventually assigned */

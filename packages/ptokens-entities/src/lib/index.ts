@@ -1,4 +1,5 @@
 type pTokenAsset = {
+  isNative: false
   /** The name of the asset. */
   name: string
   /** The chain ID of the asset's blockchain. */
@@ -14,6 +15,7 @@ type pTokenAsset = {
 }
 
 type NativeAsset = {
+  isNative: true
   /** The name of the asset. */
   name: string
   /** The chain ID of the asset's blockchain. */
@@ -55,12 +57,4 @@ type Metadata = {
   signature: string
 }
 
-const isNative = (assetInfo: AssetInfo): assetInfo is NativeAsset => {
-  return assetInfo.pTokenAddress === undefined && (assetInfo as pTokenAsset).underlyingAsset === undefined
-}
-
-const isPToken = (assetInfo: AssetInfo): assetInfo is pTokenAsset => {
-  return assetInfo.pTokenAddress === (assetInfo as pTokenAsset).underlyingAsset.pTokenAddress
-}
-
-export { Metadata, Operation, Context, pTokenAsset, NativeAsset, AssetInfo, isNative, isPToken }
+export { Metadata, Operation, Context, pTokenAsset, NativeAsset, AssetInfo }

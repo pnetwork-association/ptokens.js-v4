@@ -12,7 +12,6 @@ export type {
   NativeAsset,
   pTokenAsset,
 }
-export { isNative, isPToken } from './lib'
 export { pTokensAsset } from './ptokens-asset'
 export { pTokensAssetBuilder } from './ptokens-asset-builder'
 export { pTokensAssetProvider } from './ptokens-asset-provider'

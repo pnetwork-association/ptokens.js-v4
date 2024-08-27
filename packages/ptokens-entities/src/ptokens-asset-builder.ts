@@ -48,6 +48,10 @@ export abstract class pTokensAssetBuilder {
     return this._assetInfo
   }
 
+  get isNative() {
+    return this._assetInfo.isNative
+  }
+
   /**
    * Set the version for the token.
    * @param _version - The token version.
