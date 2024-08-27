@@ -1,23 +1,57 @@
 import { EventEmitter } from 'events'
 
-import { TransactionReceipt, createWalletClient, http, Log, PublicClient, WalletClient } from 'viem'
-import { polygon } from 'viem/chains'
+import * as viem from 'viem'
+
+jest.mock('viem', () => {
+  const originalModule = jest.requireActual<typeof viem>('viem')
+  return {
+    ...originalModule,
+    createWalletClient: jest.fn().mockReturnValue('mocked result'),
+  }
+})
+
+import { TransactionReceipt, Log, createWalletClient, PublicClient, WalletClient, AbiEvent} from 'viem'
+import { mainnet, polygon } from 'viem/chains'
 
 import { pTokensEvmProvider } from '../src'
-import * as utils from '../src/lib'
 
 import abi from './utils/exampleContractABI'
-import logs from './utils/logs.json'
+import PNetworkAdapterAbi from '../src/abi/PNetworkAdapterAbi'
+import { stringUtils } from 'ptokens-helpers'
+import { EVENT_NAMES } from '../src/lib'
+// import logs from './utils/logs.json'
 
-const receiptWithTrueStatus = require('./utils/receiptWithTrueStatus')
+import settleReceipt from './utils/settleReceipt.json'
+import swapReceipt from './utils/swapReceipt.json'
+import exampleContractABI from './utils/exampleContractABI'
 
-const publicClient: PublicClient = {} as PublicClient
-const walletClient: WalletClient = {} as WalletClient
+const peginSwap = swapReceipt[0] as unknown as TransactionReceipt
+const pegoutSwap = swapReceipt[1] as unknown as TransactionReceipt
+const peginSettle = settleReceipt[0] as unknown as TransactionReceipt
+const pegoutSettle = settleReceipt[1] as unknown as TransactionReceipt
+const peginSwapLog = peginSwap.logs[8] as unknown as Log
+const pegoutSwapLog = pegoutSwap.logs[2] as unknown as Log
+const peginSettleLog = peginSettle.logs[1] as unknown as Log
+const pegoutSettleLog = pegoutSettle.logs[8] as unknown as Log
 
-const walletClient2 = createWalletClient({
+const logs = {}
+
+const receiptWithTrueStatus = require('./utils/swapReceipt.json')
+
+const publicClientEthereumMock = {chain: mainnet} as unknown as PublicClient
+const walletClientEthereumMock = {
+  chain: mainnet,
+  account: {
+    address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+  }
+} as unknown as WalletClient
+const publicClientPolygonMock = {chain: polygon} as unknown as PublicClient
+const walletClientPolygonMock = {
   chain: polygon,
-  transport: http(),
-})
+  account: {
+    address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+  }
+} as unknown as WalletClient
 
 describe('EVM provider', () => {
   beforeEach(() => {
@@ -26,7 +60,7 @@ describe('EVM provider', () => {
   })
 
   test('Should throw with negative gas price', () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     try {
       provider.setGasPrice(-1n)
       fail()
@@ -37,7 +71,7 @@ describe('EVM provider', () => {
   })
 
   test('Should throw with negative gas price', () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     try {
       provider.setGasPrice(BigInt(1e12))
       fail()
@@ -48,7 +82,7 @@ describe('EVM provider', () => {
   })
 
   test('Should throw with negative gas limit', () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     try {
       provider.setGasLimit(BigInt(10e6))
       fail()
@@ -58,67 +92,60 @@ describe('EVM provider', () => {
     }
   })
 
-  test('Should set a walletClient', () => {
-    const provider = new pTokensEvmProvider(publicClient)
-    provider.setWalletClient(walletClient)
-    expect(provider['_walletClient']).toBe(walletClient)
+  test('Should set a walletClientEthereumMock', () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock)
+    provider.setWalletClient(walletClientEthereumMock)
+    expect(provider['_walletClient']).toBe(walletClientEthereumMock)
   })
 
-  test('Should overwrite walletClient', () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    provider.setWalletClient(walletClient2)
-    expect(provider['_walletClient']).toBe(walletClient2)
+  test('Should overwrite walletClientEthereumMock', () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    provider.setWalletClient(walletClientPolygonMock)
+    expect(provider['_walletClient']).toBe(walletClientPolygonMock)
   })
 
-  // test('Should throw if factory address does not exists', async () => {
-  //   jest.spyOn(require('ptokens-constants').FactoryAddress, 'get').mockReturnValue(undefined)
-  //   const provider = new pTokensEvmProvider(publicClient)
-  //   try {
-  //     const a = await provider.getInterimHubAddress()
-  //     fail()
-  //   } catch (_err) {
-  //     if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-  //     expect(_err.message).toEqual('makeContractCall exception')
-  //   }
-  // })
+  test('Should get chain id', async () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock)
+    expect(provider.chainId).toStrictEqual(publicClientEthereumMock.chain?.id)
+  })
 
-  // test('Should throw if call fails', async () => {
-  //   const provider = new pTokensEvmProvider(publicClient)
-  //   try {
-  //     const makeContractCallMock = jest.fn().mockImplementation(() => {
-  //       return Promise.reject(new Error('makeContractCall exception'))
-  //     })
-  //     provider.makeContractCall = makeContractCallMock
-  //     const a = await provider.getInterimHubAddress()
-  //     fail()
-  //   } catch (_err) {
-  //     if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-  //     expect(_err.message).toEqual('makeContractCall exception')
-  //   }
-  // })
+  test('Should throw if chain id is not found', async () => {
+    try {
+      const provider = new pTokensEvmProvider({...publicClientEthereumMock, chain: undefined})
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual(`No chain in specified publicClient: ${publicClientEthereumMock}`)
+    }
+  })
 
-  // TODO add support for privateKey walletClients
+  test('Should add account from private key', async () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    provider.setPrivateKeyWalletClient('0x422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742')
+    expect(createWalletClient).toHaveBeenCalledTimes(1)
+    expect(createWalletClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: expect.objectContaining({
+          address: '0xdf3B180694aB22C577f7114D822D28b92cadFd75',
+        }),
+        chain: publicClientEthereumMock.chain,
+      })
+    )
+  })
 
-  // test('Should add account from private key', () => {
-  //   const provider = new pTokensEvmProvider(publicClient, walletClient)
-  //   const addAccountSpy = jest.spyOn(provider['_web3'].eth.accounts.wallet, 'add')
-  //   provider.setPrivateKey('422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742')
-  //   expect(addAccountSpy).toHaveBeenCalledTimes(1)
-  //   expect(provider['_web3'].eth.defaultAccount).toEqual('0xdf3B180694aB22C577f7114D822D28b92cadFd75')
-  // })
-
-  // test('Should not add account from invalid private key', () => {
-  //   const provider = new pTokensEvmProvider(publicClient, walletClient)
-  //   try {
-  //     provider.setPrivateKey('invalid-key')
-  //     fail()
-  //   } catch (err) {
-  //     expect(err.message).toEqual('Invalid Private Key, Not a valid string or uint8Array')
-  //   }
-  // })
+  test('Should not add account from invalid private key', () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    try {
+      provider.setPrivateKeyWalletClient('0x1234567890abcdef')
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('private key must be 32 bytes, hex or bigint, not string')
+    }
+  })
 
   test('Should call a contract method', async () => {
-    const provider = new pTokensEvmProvider(publicClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock)
     const options = {
       method: 'number',
       abi,
@@ -139,14 +166,14 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    publicClient.readContract = publicReadContractMock
+    publicClientEthereumMock.readContract = publicReadContractMock
     const res = await provider.makeContractCall(options, args)
     expect(res).toEqual('publicClientCall')
     expect(publicReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
   })
 
   test('Should call a contract method with no arguments', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const options = {
       method: 'number',
       abi,
@@ -166,14 +193,14 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    publicClient.readContract = publicReadContractMock
+    publicClientEthereumMock.readContract = publicReadContractMock
     const res = await provider.makeContractCall<number, []>(options)
     expect(res).toEqual('publicClientCall')
     expect(publicReadContractMock).toHaveBeenNthCalledWith(1, expectedArgs)
   })
 
   test('Should send a contract method', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const args = [1, 'arg2', 'arg3']
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
@@ -221,10 +248,10 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
@@ -251,12 +278,12 @@ describe('EVM provider', () => {
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
     expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
       confirmations: 1,
-      hash: utils.formatAddress('tx-hash'),
+      hash: stringUtils.addHexPrefix('tx-hash'),
     })
   })
 
   test('Should send a contract method with no arguments', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
     const method = 'setNumber'
@@ -303,10 +330,10 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
@@ -330,12 +357,12 @@ describe('EVM provider', () => {
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
     expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
       confirmations: 1,
-      hash: utils.formatAddress('tx-hash'),
+      hash: stringUtils.addHexPrefix('tx-hash'),
     })
   })
 
   test('Should send a contract method with waiting for n confirmation', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const args = [1, 'arg2', 'arg3']
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
@@ -384,10 +411,10 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
@@ -415,12 +442,12 @@ describe('EVM provider', () => {
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
     expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
       confirmations: confs,
-      hash: utils.formatAddress('tx-hash'),
+      hash: stringUtils.addHexPrefix('tx-hash'),
     })
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const args = [1, 'arg2', 'arg3']
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
@@ -472,10 +499,10 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
@@ -502,12 +529,12 @@ describe('EVM provider', () => {
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
     expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
       confirmations: 1,
-      hash: utils.formatAddress('tx-hash'),
+      hash: stringUtils.addHexPrefix('tx-hash'),
     })
   })
 
   test('Should send a contract method with set gas price', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const args = [1, 'arg2', 'arg3']
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
@@ -557,10 +584,10 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
@@ -587,12 +614,12 @@ describe('EVM provider', () => {
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
     expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
       confirmations: 1,
-      hash: utils.formatAddress('tx-hash'),
+      hash: stringUtils.addHexPrefix('tx-hash'),
     })
   })
 
   test('Should send a contract method with set gas price and gas limit', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const args = [1, 'arg2', 'arg3']
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const contractAddress = '0xb794f5ea0ba39494ce839613fffba74279579268'
@@ -642,10 +669,10 @@ describe('EVM provider', () => {
       )
       return promi
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     let txBroadcastedHash = ''
     let txConfirmedReceipt = ''
     const txReceipt = await provider
@@ -672,12 +699,12 @@ describe('EVM provider', () => {
     expect(writeContractMock).toHaveBeenNthCalledWith(1, 'simulate-write')
     expect(waitForTransactionReceiptMock).toHaveBeenNthCalledWith(1, {
       confirmations: 1,
-      hash: utils.formatAddress('tx-hash'),
+      hash: stringUtils.addHexPrefix('tx-hash'),
     })
   })
 
-  test('Should reject if walletClient is not defined', async () => {
-    const provider = new pTokensEvmProvider(publicClient)
+  test('Should reject if walletClientEthereumMock is not defined', async () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock)
     try {
       await provider.makeContractSend(
         {
@@ -696,11 +723,11 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if getAddresses throws', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const getAddressMock = jest.fn().mockImplementation(() => {
       return Promise.reject(new Error('getAddresses exception'))
     })
-    walletClient.getAddresses = getAddressMock
+    walletClientEthereumMock.getAddresses = getAddressMock
     try {
       await provider.makeContractSend(
         {
@@ -719,7 +746,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if simulateContract throws', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const getAddressMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
@@ -732,8 +759,8 @@ describe('EVM provider', () => {
     const simulateContractMock = jest.fn().mockImplementation(() => {
       return Promise.reject(new Error('simulateContract exception'))
     })
-    walletClient.getAddresses = getAddressMock
-    publicClient.simulateContract = simulateContractMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
     try {
       await provider.makeContractSend(
         {
@@ -752,7 +779,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if writeContract throws', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const getAddressMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
@@ -773,9 +800,9 @@ describe('EVM provider', () => {
     const writeContractMock = jest.fn().mockImplementation(() => {
       return Promise.reject(new Error('writeContract exception'))
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
     try {
       await provider.makeContractSend(
         {
@@ -794,7 +821,7 @@ describe('EVM provider', () => {
   })
 
   test('Should reject if waitForTransactionReceipt throws', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
     const getAddressMock = jest.fn().mockImplementation(() => {
       const promi = new Promise((resolve) =>
@@ -823,10 +850,10 @@ describe('EVM provider', () => {
     const waitForTransactionReceiptMock = jest.fn().mockImplementation(() => {
       return Promise.reject(new Error('waitForTransactionReceipt exception'))
     })
-    walletClient.getAddresses = getAddressMock
-    walletClient.writeContract = writeContractMock
-    publicClient.simulateContract = simulateContractMock
-    publicClient.waitForTransactionReceipt = waitForTransactionReceiptMock
+    walletClientEthereumMock.getAddresses = getAddressMock
+    walletClientEthereumMock.writeContract = writeContractMock
+    publicClientEthereumMock.simulateContract = simulateContractMock
+    publicClientEthereumMock.waitForTransactionReceipt = waitForTransactionReceiptMock
     try {
       await provider.makeContractSend(
         {
@@ -844,13 +871,38 @@ describe('EVM provider', () => {
     }
   })
 
-  /**
-   * @deprecated Now using https://viem.sh/docs/actions/public/waitForTransactionReceipt.html
-   */
+  test('Should reject if walletClientEthereum account is not defined', async () => {
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([undefined])
+        }),
+      )
+      return promi
+    })
+    walletClientEthereumMock.getAddresses = getAddressMock
+    try {
+      await provider.makeContractSend(
+        {
+          method: 'setNumber',
+          abi,
+          contractAddress: 'contract-address',
+          value: 1n,
+        },
+        [1, 'arg2', 'arg3'],
+      )
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual('No account found for the provided walletClient')
+    }
+  })
+
   test('Should wait for transaction confirmation', async () => {
-    const provider = new pTokensEvmProvider(publicClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock)
     const waitForConfirmationSpy = jest
-      .spyOn(publicClient, 'waitForTransactionReceipt')
+      .spyOn(publicClientEthereumMock, 'waitForTransactionReceipt')
       .mockResolvedValue(receiptWithTrueStatus as TransactionReceipt)
     const ret = await provider.waitForTransactionConfirmation(
       '0x5d65fa769234d6eef32baaeeb267dd1b3b8e0ff2e04a0861e2d36af26d631046',
@@ -861,145 +913,297 @@ describe('EVM provider', () => {
   })
 
   test('Should return the latest block number', async () => {
-    const provider = new pTokensEvmProvider(publicClient)
+    const provider = new pTokensEvmProvider(publicClientEthereumMock)
     const clientGetBlockMock = jest.fn().mockImplementation(() => Promise.resolve({ number: 1333n }))
-    publicClient.getBlock = clientGetBlockMock
+    publicClientEthereumMock.getBlock = clientGetBlockMock
     const ret = await provider.getLatestBlockNumber()
     expect(clientGetBlockMock).toHaveBeenCalledTimes(1)
     expect(ret).toBe(1333n)
   })
 
-  test('Should return a operationQueued log', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const emitter = new EventEmitter()
-    const spyOnGetOperationIdFromLog = jest.spyOn(utils, 'getOperationIdFromLog')
-    const watchContractEventMock = ({ onLogs }: { onLogs: (provider: Array<Log>) => void }) => {
-      emitter.on('log-queued', onLogs)
-      return () => {
-        emitter.removeAllListeners('log-queued')
-      }
-    }
-    publicClient.watchContractEvent = watchContractEventMock as any
-    const emitEvents = () => {
-      emitter.emit('log-queued', [logs[6]])
-      emitter.emit('log-queued', [logs[1]])
-    }
-    const event = await Promise.all([
-      provider['_watchEvent'](
-        '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
-        utils.EVENT_NAMES.OPERATION_QUEUED,
-        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-      ),
-      emitEvents(),
-    ])
-    expect(event[0]).toStrictEqual(logs[1])
-    expect(spyOnGetOperationIdFromLog).toHaveBeenCalledTimes(2)
-  })
-
-  test('Should return a operationExecuted log', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const emitter = new EventEmitter()
-    const spyOnGetOperationIdFromLog = jest.spyOn(utils, 'getOperationIdFromLog')
-    const watchContractEventMock = ({ onLogs }: { onLogs: (provider: Array<Log>) => void }) => {
-      emitter.on('log-executed', onLogs)
-      return () => {
-        emitter.removeAllListeners('log-executed')
-      }
-    }
-    publicClient.watchContractEvent = watchContractEventMock as any
-    const emitEvents = () => {
-      emitter.emit('log-executed', [logs[4]])
-      emitter.emit('log-executed', [logs[2]])
-    }
-    const event = await Promise.all([
-      provider['_watchEvent'](
-        '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
-        utils.EVENT_NAMES.OPERATION_EXECUTED,
-        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-      ),
-      emitEvents(),
-    ])
-    expect(event[0]).toStrictEqual(logs[2])
-    expect(spyOnGetOperationIdFromLog).toHaveBeenCalledTimes(2)
-  })
-
-  test('Should return a operationCanceled log', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const emitter = new EventEmitter()
-    const spyOnGetOperationIdFromLog = jest.spyOn(utils, 'getOperationIdFromLog')
-    const watchContractEventMock = ({ onLogs }: { onLogs: (provider: Array<Log>) => void }) => {
-      emitter.on('log-executed', onLogs)
-      return () => {
-        emitter.removeAllListeners('log-executed')
-      }
-    }
-    publicClient.watchContractEvent = watchContractEventMock as any
-    const emitEvents = () => {
-      emitter.emit('log-executed', [logs[7]])
-    }
-    const event = await Promise.all([
-      provider['_watchEvent'](
-        '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
-        utils.EVENT_NAMES.OPERATION_CANCELLED,
-        '0xc3e33a15fb36d4c813c32d85e8005baf94b37d032c9830f00009aa536966e5b3',
-      ),
-      emitEvents(),
-    ])
-    expect(event[0]).toStrictEqual(logs[7])
-    expect(spyOnGetOperationIdFromLog).toHaveBeenCalledTimes(1)
-  })
-
-  test('Should monitor a cross chain operation', async () => {
-    let operationQueuedObject = null,
-      operationExecutedObject = null
-    const operationCancelledObject = null
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    const watchEventMock = jest.fn().mockResolvedValueOnce(logs[1]).mockResolvedValueOnce(logs[2])
-    provider['_watchEvent'] = watchEventMock
-    const ret = await provider
-      .monitorCrossChainOperations(
-        '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
-        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-      )
-      .on('operationQueued', (_obj) => {
-        operationQueuedObject = _obj
-      })
-      .on('operationExecuted', (_obj) => {
-        operationExecutedObject = _obj
-      })
-    expect(watchEventMock).toHaveBeenCalledTimes(2)
-    expect(watchEventMock).toHaveBeenNthCalledWith(
-      1,
-      '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
-      utils.EVENT_NAMES.OPERATION_QUEUED,
-      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-    )
-    expect(watchEventMock).toHaveBeenNthCalledWith(
-      2,
-      '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
-      utils.EVENT_NAMES.OPERATION_EXECUTED,
-      '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-    )
-    expect(operationQueuedObject).toStrictEqual('0x530555c2b4f2d9be613b763e9dbe126b958ef44382f9db7b5001eb078050ccda')
-    expect(operationExecutedObject).toStrictEqual('0xa3ca2fe3981b265c3da018120abaf6a454b60f7b5363a3559531f82acdde4308')
-    expect(ret).toStrictEqual(logs[2])
-    expect(operationCancelledObject).toStrictEqual(null)
-  })
-
-  test('Should reject when an error occurs monitoring a cross chain operation', async () => {
-    const provider = new pTokensEvmProvider(publicClient, walletClient)
-    publicClient.watchContractEvent = jest.fn().mockImplementation(() => {
-      throw new Error('error')
-    })
+  test('Should throw if returned block do not have a number', async () => {
     try {
-      await provider.monitorCrossChainOperations(
-        '0x8Fe7F9993e8e5fCA029a0D5ABF177dE052FaF0B5',
-        '0xb68e25afc0680bd3930459e5cfd3bc5b4cc0c07a67cfab9433a3d9337b2996ca',
-      )
+      const provider = new pTokensEvmProvider(publicClientEthereumMock)
+      const clientGetBlockMock = jest.fn().mockImplementation(() => Promise.resolve({ number: undefined }))
+      publicClientEthereumMock.getBlock = clientGetBlockMock
+      const ret = await provider.getLatestBlockNumber()
       fail()
     } catch (_err) {
       if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('error')
+      expect(_err.message).toEqual(`Viem could not retreive latest block number`)
+    }
+  })
+
+  test('Should process a log as soon it is found', async () => { 
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    const getLogsMock = jest.fn().mockImplementation(({
+      toBlock,
+    }) => {
+      const log1Promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([peginSwapLog])
+        }),
+      )
+      const log2Promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([pegoutSwapLog])
+        }),
+      )
+      const log3Promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([peginSwapLog, pegoutSwapLog])
+        }),
+      )
+      const emptyPromi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([])
+        }),
+      )
+
+      if (toBlock === 20000n) return log3Promi
+      else if (toBlock === 50000n) return log1Promi
+      else if (toBlock === 100000n) return log2Promi
+      else return emptyPromi
+    })
+    publicClientEthereumMock.getLogs = getLogsMock
+    const onLog = jest.fn()
+    await provider._getEvents({
+      fromAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      contractAddress: '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+      contractAbi: PNetworkAdapterAbi,
+      eventName: EVENT_NAMES.SWAP,
+      fromBlock: 10n,
+      toBlock: 200000n,
+      onLog: onLog,
+      chunkSize: 1000n,
+    })
+    expect(onLog).toHaveBeenCalledTimes(4)
+    expect(onLog).toHaveBeenNthCalledWith(1, pegoutSwapLog)
+    expect(onLog).toHaveBeenNthCalledWith(2, peginSwapLog)
+    expect(onLog).toHaveBeenNthCalledWith(3, peginSwapLog)
+    expect(onLog).toHaveBeenNthCalledWith(4, pegoutSwapLog)
+  })
+
+  test('Should reject if abi is not correct', async () => {
+    try {
+      const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+      const getLogsMock = jest.fn().mockImplementation(({
+        toBlock,
+      }) => {
+        const log1Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([peginSwapLog])
+          }),
+        )
+        const log2Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([pegoutSwapLog])
+          }),
+        )
+        const log3Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([peginSwapLog, pegoutSwapLog])
+          }),
+        )
+        const emptyPromi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([])
+          }),
+        )
+
+        if (toBlock === 20000n) return log3Promi
+        else if (toBlock === 50000n) return log1Promi
+        else if (toBlock === 100000n) return log2Promi
+        else return emptyPromi
+      })
+      publicClientEthereumMock.getLogs = getLogsMock
+      const onLog = jest.fn()
+      await provider._getEvents({
+        fromAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+        contractAddress: '0x6153ec976A5B3886caF3A88D8d994c4CEC24203E',
+        contractAbi: exampleContractABI,
+        eventName: EVENT_NAMES.SWAP,
+        fromBlock: 10n,
+        toBlock: 200000n,
+        onLog: onLog,
+        chunkSize: 1000n,
+      })
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual(`Event ${EVENT_NAMES.SWAP} not found in contract ABI`)
+    }
+  })
+
+  test('Should emit a event at each swap event and return an array with all the logs when done', async () => { 
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    const getLogsMock = jest.fn().mockImplementation(({
+      toBlock,
+    }) => {
+      const log1Promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([peginSwapLog])
+        }),
+      )
+      const log2Promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([pegoutSwapLog])
+        }),
+      )
+      const log3Promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([peginSwapLog, pegoutSwapLog])
+        }),
+      )
+      const emptyPromi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([])
+        }),
+      )
+
+      if (toBlock === 20000n) return log3Promi
+      else if (toBlock === 50000n) return log1Promi
+      else if (toBlock === 100000n) return log2Promi
+      else return emptyPromi
+    })
+    const getBlockNumberMock = jest.fn().mockImplementation(() => 
+      new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve(200000n)
+        }),
+      )
+    )
+    const account = '0xd4E96eF8eee8678dBFf4d535E033Ed1a4F7605b7'
+    const getAddressMock = jest.fn().mockImplementation(() => {
+      const promi = new Promise((resolve) =>
+        setImmediate(() => {
+          return resolve([account])
+        }),
+      )
+      return promi
+    })
+    walletClientEthereumMock.getAddresses = getAddressMock
+    publicClientEthereumMock.getLogs = getLogsMock
+    publicClientEthereumMock.getBlockNumber = getBlockNumberMock
+    const onLog = jest.fn()
+    const events = await provider.getSwaps(0n)
+      .on(EVENT_NAMES.SWAP, onLog)
+    expect(onLog).toHaveBeenCalledTimes(4)
+    expect(onLog).toHaveBeenNthCalledWith(1, pegoutSwapLog)
+    expect(onLog).toHaveBeenNthCalledWith(2, peginSwapLog)
+    expect(onLog).toHaveBeenNthCalledWith(3, peginSwapLog)
+    expect(onLog).toHaveBeenNthCalledWith(4, pegoutSwapLog)
+    expect(events).toStrictEqual([pegoutSwapLog, peginSwapLog, peginSwapLog, pegoutSwapLog])
+  })
+
+  test('Should throw if adapter is not defined for specified chainId', async () => {
+    try {
+      const provider = new pTokensEvmProvider({...publicClientEthereumMock, chain: {...mainnet, id: -1}}, walletClientEthereumMock)
+      const getLogsMock = jest.fn().mockImplementation(({
+        toBlock,
+      }) => {
+        const log1Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([peginSwapLog])
+          }),
+        )
+        const log2Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([pegoutSwapLog])
+          }),
+        )
+        const log3Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([peginSwapLog, pegoutSwapLog])
+          }),
+        )
+        const emptyPromi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([])
+          }),
+        )
+
+        if (toBlock === 20000n) return log3Promi
+        else if (toBlock === 50000n) return log1Promi
+        else if (toBlock === 100000n) return log2Promi
+        else return emptyPromi
+      })
+      const getBlockNumberMock = jest.fn().mockImplementation(() => 
+        new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve(200000n)
+          }),
+        )
+      )
+      publicClientEthereumMock.getLogs = getLogsMock
+      publicClientEthereumMock.getBlockNumber = getBlockNumberMock
+      const onLog = jest.fn()
+      const events = await provider.getSwaps(0n)
+        .on(EVENT_NAMES.SWAP, onLog)
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual(`Adapter address for -1 not found`)
+    }
+  })
+
+  test('Should throw if no account is not defined for specified walletClient', async () => {
+    try {
+      const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+      const getLogsMock = jest.fn().mockImplementation(({
+        toBlock,
+      }) => {
+        const log1Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([peginSwapLog])
+          }),
+        )
+        const log2Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([pegoutSwapLog])
+          }),
+        )
+        const log3Promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([peginSwapLog, pegoutSwapLog])
+          }),
+        )
+        const emptyPromi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([])
+          }),
+        )
+
+        if (toBlock === 20000n) return log3Promi
+        else if (toBlock === 50000n) return log1Promi
+        else if (toBlock === 100000n) return log2Promi
+        else return emptyPromi
+      })
+      const getBlockNumberMock = jest.fn().mockImplementation(() => 
+        new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve(200000n)
+          }),
+        )
+      )
+      const getAddressMock = jest.fn().mockImplementation(() => {
+        const promi = new Promise((resolve) =>
+          setImmediate(() => {
+            return resolve([undefined])
+          }),
+        )
+        return promi
+      })
+      walletClientEthereumMock.getAddresses = getAddressMock
+      publicClientEthereumMock.getLogs = getLogsMock
+      publicClientEthereumMock.getBlockNumber = getBlockNumberMock
+      const onLog = jest.fn()
+      const events = await provider.getSwaps(0n)
+        .on(EVENT_NAMES.SWAP, onLog)
+      fail()
+    } catch (_err) {
+      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+      expect(_err.message).toEqual(`No user account found`)
     }
   })
 })
