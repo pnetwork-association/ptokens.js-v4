@@ -5,7 +5,7 @@ import { concat, numberToHex, TransactionReceipt, WalletClient } from 'viem'
 
 import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
 import {
-  getSwapEventId,
+  getEventIdFromSwapLog,
   getOperationFromLog,
   getLogFromTransactionReceipt,
   serializeOperation,
@@ -91,7 +91,7 @@ export class pTokensEvmAsset extends pTokensAsset {
             const ret = {
               txHash: txReceipt.transactionHash.toString(),
               operation: getOperationFromLog(swapLog, this.chainId),
-              eventId: getSwapEventId(swapLog, this.getContext()),
+              eventId: getEventIdFromSwapLog(swapLog, this.getContext()),
             }
             promi.emit('txConfirmed', ret)
             return resolve(ret)

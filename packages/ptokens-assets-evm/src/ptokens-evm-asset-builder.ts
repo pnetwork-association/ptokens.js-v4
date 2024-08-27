@@ -1,5 +1,5 @@
 import { BlockchainType } from 'ptokens-constants'
-import { pTokensAssetBuilder, isPToken } from 'ptokens-entities'
+import { pTokensAssetBuilder } from 'ptokens-entities'
 import { getters } from 'ptokens-helpers'
 import { isAddress } from 'viem'
 
@@ -33,7 +33,7 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
     const pTokenAddress = this.assetInfo.pTokenAddress
     if (pTokenAddress && !isAddress(pTokenAddress))
       throw new Error(`pTokenAddress ${pTokenAddress} must be a valid address`)
-    if (isPToken(this.assetInfo)) {
+    if (!this.assetInfo.isNative) {
       if (this.assetInfo.pTokenAddress != this.assetInfo.underlyingAsset.tokenAddress)
         throw new Error(
           `pToken cannot be underlying of itself: ${this.assetInfo.pTokenAddress} must be different from ${this.assetInfo.underlyingAsset.tokenAddress}`,

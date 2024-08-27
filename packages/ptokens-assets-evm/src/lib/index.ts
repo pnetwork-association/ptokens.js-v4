@@ -146,11 +146,3 @@ export const getOperationFromTransactionReceipt = (
   const swapLog = getLogFromTransactionReceipt(_swapReceipt)
   return getOperationFromLog(swapLog, _chainId)
 }
-
-// export const getDefaultEvmProvider = (_chain: Chain) =>
-//   new pTokensEvmProvider(
-//     createPublicClient({
-//       chain: _chain,
-//       transport: http(),
-//     }),
-//   )
