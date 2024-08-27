@@ -228,7 +228,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     return receipt
   }
 
-  protected async _getEvents(_getEvents: GetEvents): Promise<boolean> {
+  async _getEvents(_getEvents: GetEvents): Promise<boolean> {
     return await new Promise<boolean>(
       (resolve, reject) =>
         (async () => {
@@ -264,9 +264,11 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               })
 
               // Process each log
+              if (logs) {
               logs.forEach((log) => {
                 _getEvents.onLog(log)
               })
+              }
             }
 
             resolve(true)
@@ -277,24 +279,21 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     )
   }
 
-  getSwaps(_from = 1000n) {
-    //FIXME: add a proper starting point
-    const promi = new PromiEvent<boolean>(
+  getSwaps<T = Log[]>(_from: bigint, _chunkSize = 1000n) {
+    const promi = new PromiEvent<T>(
       (resolve, reject) =>
         (async () => {
           try {
-            const chainId = this._publicClient.chain?.id
-            if (!chainId) {
-              throw new Error(`ChainId for ${this._publicClient.account} not found`)
-            }
+            const chainId = this._publicClient.chain?.id as number
             const adapterAddress = getters.getAdapterAddress(chainId)
             if (!adapterAddress) {
               throw new Error(`Adapter address for ${chainId} not found`)
             }
-            const userAddress = this._walletClient.account?.address
+            const [userAddress] = await this._walletClient.getAddresses()
             if (!userAddress) throw new Error('No user account found')
 
-            const res = await this._getEvents({
+            let res: Log[] = []
+            const operation = await this._getEvents({
               fromAddress: userAddress,
               contractAddress: stringUtils.addHexPrefix(adapterAddress),
               contractAbi: PNetworkAdapterAbi,
@@ -302,11 +301,12 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
               fromBlock: _from,
               toBlock: await this._publicClient.getBlockNumber(),
               onLog: (_log: Log) => {
-                console.log(_log) // TODO: remove only debug logging
-                promi.emit('swap', _log.transactionHash)
+                res.push(_log)
+                promi.emit(EVENT_NAMES.SWAP, _log)
               },
+              chunkSize: _chunkSize,
             })
-            return resolve(res)
+            return resolve(res as T)
           } catch (_err) {
             return reject(_err)
           }
