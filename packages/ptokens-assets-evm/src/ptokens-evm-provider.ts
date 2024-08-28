@@ -65,7 +65,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @param _walletClient - A viem wallet client.
    */
   constructor(_publicClient: PublicClient, _walletClient?: WalletClient) {
-    if (!_publicClient.chain) throw new Error(`No chain in specified publicClient: ${_publicClient}`)
+    if (!_publicClient.chain) throw new Error('No chain in specified publicClient')
     this._publicClient = _publicClient
     this._chainId = _publicClient.chain.id
     if (_walletClient) this._walletClient = _walletClient
@@ -228,14 +228,14 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     return receipt
   }
 
-  async _getEvents(_getEvents: GetEvents): Promise<boolean> {
+  async getEvents(_getEvents: GetEvents): Promise<boolean> {
     return await new Promise<boolean>(
       (resolve, reject) =>
         (async () => {
           try {
             if (!_getEvents.chunkSize) _getEvents.chunkSize = 1000n
             const eventAbi = _getEvents.contractAbi.find(
-              (item) => item.type === 'event' && item.name === _getEvents.eventName,
+              (item) => item.type === 'event' && item.name === _getEvents.eventName.toString(),
             ) as AbiEvent
             if (!eventAbi) {
               throw new Error(`Event ${_getEvents.eventName} not found in contract ABI`)
@@ -265,9 +265,9 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
 
               // Process each log
               if (logs) {
-              logs.forEach((log) => {
-                _getEvents.onLog(log)
-              })
+                logs.forEach((log) => {
+                  _getEvents.onLog(log)
+                })
               }
             }
 
@@ -284,16 +284,16 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
       (resolve, reject) =>
         (async () => {
           try {
-            const chainId = this._publicClient.chain?.id as number
-            const adapterAddress = getters.getAdapterAddress(chainId)
+            const chainId = this._publicClient.chain?.id
+            const adapterAddress = getters.getAdapterAddress(chainId as number)
             if (!adapterAddress) {
               throw new Error(`Adapter address for ${chainId} not found`)
             }
             const [userAddress] = await this._walletClient.getAddresses()
             if (!userAddress) throw new Error('No user account found')
 
-            let res: Log[] = []
-            const operation = await this._getEvents({
+            const res: Log[] = []
+            await this.getEvents({
               fromAddress: userAddress,
               contractAddress: stringUtils.addHexPrefix(adapterAddress),
               contractAbi: PNetworkAdapterAbi,
