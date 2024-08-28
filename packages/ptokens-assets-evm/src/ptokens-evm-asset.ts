@@ -2,6 +2,7 @@ import PromiEvent from 'promievent'
 import { BlockchainType } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
 import { concat, numberToHex, TransactionReceipt, WalletClient } from 'viem'
+import axios from 'axios'
 
 import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
 import {
@@ -103,11 +104,27 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  protected getProofMetadata(_swapTxHash: string, _chainId: number): Promise<Metadata> {
-    throw new Error('Method not implemented.')
+  public async getProofMetadata(_eventId: string): Promise<Metadata> {
+    return new Promise((resolve, reject) => (async () => {
+      try {
+        const { data } = await axios.post('https://pnetwork-node-4a.eu.ngrok.io', {
+          jsonrpc: '2.0',
+          method: 'getSignedEvent',
+          params: [_eventId],
+          id: 1
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        return resolve({ signature: data.signature as string})
+      } catch (_err) {
+        return reject(_err)
+      }
+    }))
   }
 
-  protected settle(_operation: Operation, _metadata: Metadata): PromiEvent<any> {
+  public settle(_operation: Operation, _metadata: Metadata): PromiEvent<any> {
     const promi = new PromiEvent<SettleResult>(
       (resolve, reject) =>
         (async () => {
