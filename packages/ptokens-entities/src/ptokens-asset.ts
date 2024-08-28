@@ -125,7 +125,7 @@ export abstract class pTokensAsset {
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  protected abstract getProofMetadata(_swapTxHash: string, _chainId: number): Promise<Metadata>
+  protected abstract getProofMetadata(_eventId: string): Promise<Metadata>
 
   protected abstract settle(_operation: Operation, _metadata: Metadata): PromiEvent<any>
 }

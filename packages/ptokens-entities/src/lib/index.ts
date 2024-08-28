@@ -53,7 +53,6 @@ type Context = {
 }
 
 type Metadata = {
-  preimage: string
   signature: string
 }
 
