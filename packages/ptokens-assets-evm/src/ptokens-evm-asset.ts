@@ -1,7 +1,7 @@
 import PromiEvent from 'promievent'
-import { BlockchainType } from 'ptokens-constants'
+import { BlockchainType, Protocol, Version } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
-import { concat, numberToHex, TransactionReceipt, WalletClient } from 'viem'
+import { concat, Log, numberToHex, TransactionReceipt, WalletClient } from 'viem'
 import axios from 'axios'
 
 import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
@@ -12,6 +12,7 @@ import {
   serializeOperation,
   decodeAdapterLog,
   isSettleLog,
+  getEventPreImage,
 } from './lib'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
@@ -30,7 +31,9 @@ export class pTokensEvmAsset extends pTokensAsset {
    * Create and initialize a pTokensEvmAsset object. pTokensEvmAsset objects shall be created with a pTokensEvmAssetBuilder instance.
    */
   constructor(config: pTokenEvmAssetConfig) {
-    if (config.assetInfo.decimals === undefined) throw new Error('Missing decimals')
+    if (!config.assetInfo.decimals) throw new Error('Missing decimals')
+    if (!config.version) config.version = Version.V1
+    if (!config.protocolId) config.protocolId = Protocol.EVM
     super(config, BlockchainType.EVM)
     this._provider = config.provider
   }
@@ -50,8 +53,8 @@ export class pTokensEvmAsset extends pTokensAsset {
   }
 
   getContext(): `0x${string}` {
-    const version = numberToHex(this.version)
-    const protocolId = numberToHex(this.protocolId)
+    const version = numberToHex(this.version, { size: 1 })
+    const protocolId = numberToHex(this.protocolId, { size: 1 })
     const chainId = numberToHex(this.chainId, { size: 32 })
     return concat([version, protocolId, chainId])
   }
@@ -105,32 +108,36 @@ export class pTokensEvmAsset extends pTokensAsset {
   }
 
   public async getProofMetadata(_eventId: string): Promise<Metadata> {
-    return new Promise((resolve, reject) => (async () => {
-      try {
-        const { data } = await axios.post('https://pnetwork-node-4a.eu.ngrok.io', {
+    try {
+      const { data } = await axios.post(
+        'https://pnetwork-node-4a.eu.ngrok.io',
+        {
           jsonrpc: '2.0',
           method: 'getSignedEvent',
           params: [_eventId],
-          id: 1
-        }, {
+          id: 1,
+        },
+        {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           }
-        });
-        return resolve({ signature: data.signature as string})
-      } catch (_err) {
-        return reject(_err)
-      }
-    }))
+        }
+      )
+      if (!data.signature) throw new Error('Data has been retrieved but no signature is available')
+      return { signature: data.signature as string };
+    } catch (_err) {
+      throw _err
+    }
   }
 
-  public settle(_operation: Operation, _metadata: Metadata): PromiEvent<any> {
+  public settle<T = Log>(_operation: Operation, _swapLog: T, _metadata: Metadata): PromiEvent<any> {
     const promi = new PromiEvent<SettleResult>(
       (resolve, reject) =>
         (async () => {
           try {
             if (!this._provider) return reject(new Error('Missing provider'))
-            const args = [serializeOperation(_operation), [_metadata.preimage, _metadata.signature]]
+            const preimage = getEventPreImage(_swapLog as Log, this.getContext())
+            const args = [serializeOperation(_operation), [preimage, _metadata.signature]]
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
