@@ -1,5 +1,5 @@
 import PromiEvent from 'promievent'
-import { BlockchainType } from 'ptokens-constants'
+import { BlockchainType, Protocol, Version } from 'ptokens-constants'
 
 import { Operation, Metadata, AssetInfo } from './lib'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
@@ -8,6 +8,8 @@ export type pTokenAssetConfig = {
   /** An AssetInfo object containing asset technical details. */
   assetInfo: AssetInfo
   adapterAddress: string
+  protocolId?: Protocol
+  version?: Version
 }
 
 export type NativeToXBasisPoints = {
@@ -60,9 +62,16 @@ export abstract class pTokensAsset {
    */
   constructor(_config: pTokenAssetConfig, _type: BlockchainType) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
+    if (!_config.version) throw new Error('Missing asset version')
+    if (!_config.protocolId) throw new Error('Missing asset protocolId')
     if (_config.assetInfo.isNative === false)
-      if (_config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress)
+      if (
+        _config.assetInfo.underlyingAsset.pTokenAddress &&
+        _config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress
+      )
         throw new Error('pToken address does not match underlying asset pToken address')
+    this._version = _config.version
+    this._protocolId = _config.protocolId
     this._type = _type
     this._assetInfo = _config.assetInfo
     this._adapterAddress = _config.adapterAddress
@@ -127,5 +136,5 @@ export abstract class pTokensAsset {
 
   protected abstract getProofMetadata(_eventId: string): Promise<Metadata>
 
-  protected abstract settle(_operation: Operation, _metadata: Metadata): PromiEvent<any>
+  protected abstract settle<T>(_operation: Operation, _swapLog: T, _metadata: Metadata): PromiEvent<any>
 }
