@@ -289,7 +289,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         (async () => {
           try {
             const chainId = this._publicClient.chain?.id
-            const adapterAddress = getters.getAdapterAddress(chainId)
+            const adapterAddress = getters.getAdapterAddress(chainId as number)
             if (!adapterAddress) {
               throw new Error(`Adapter address for ${chainId} not found`)
             }
