@@ -1,22 +1,31 @@
 import { stringUtils } from 'ptokens-helpers'
 import * as viem from 'viem'
-import { TransactionReceipt, Log, createWalletClient, PublicClient, WalletClient } from 'viem'
-import { mainnet, polygon } from 'viem/chains'
+import { TransactionReceipt, Log, createWalletClient, WalletClient } from 'viem'
+import { mainnet } from 'viem/chains'
 
 import { pTokensEvmProvider } from '../src'
 import PNetworkAdapterAbi from '../src/abi/PNetworkAdapterAbi'
 import { EVENT_NAMES } from '../src/lib'
 
 import abi from './utils/exampleContractABI'
+import { publicClientEthereumMock, walletClientEthereumMock, walletClientPolygonMock } from './utils/mock-viem-clients'
 import swapReceipt from './utils/swapReceipt.json'
 
-jest.mock('viem', () => {
-  const originalModule = jest.requireActual<typeof viem>('viem')
-  return {
-    ...originalModule,
-    createWalletClient: jest.fn().mockReturnValue('mocked result'),
-  }
-})
+// jest.mock('viem', () => {
+//   const originalModule = jest.requireActual<typeof viem>('viem')
+//   return {
+//     ...originalModule,
+//     createWalletClient: jest.fn().mockImplementation(() => {
+//       return {
+//       account: {
+//         address: '0xdf3B180694aB22C577f7114D822D28b92cadFd75',
+//       },
+//       chain: {
+//         id: 1,
+//       },
+//     } as unknown as WalletClient}),
+//   }
+// })
 
 const peginSwap = swapReceipt[0] as unknown as TransactionReceipt
 const pegoutSwap = swapReceipt[1] as unknown as TransactionReceipt
@@ -24,20 +33,6 @@ const peginSwapLog = peginSwap.logs[8] as unknown as Log
 const pegoutSwapLog = pegoutSwap.logs[2] as unknown as Log
 
 const receiptWithTrueStatus = require('./utils/swapReceipt.json')
-
-const publicClientEthereumMock = { chain: mainnet } as unknown as PublicClient
-const walletClientEthereumMock = {
-  chain: mainnet,
-  account: {
-    address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-  },
-} as unknown as WalletClient
-const walletClientPolygonMock = {
-  chain: polygon,
-  account: {
-    address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-  },
-} as unknown as WalletClient
 
 describe('EVM provider', () => {
   beforeEach(() => {
@@ -111,7 +106,7 @@ describe('EVM provider', () => {
     })
   })
 
-  describe('setGasPrice', () => {
+  describe('setWalletClient', () => {
     it('Should set a walletClientEthereumMock', () => {
       const provider = new pTokensEvmProvider(publicClientEthereumMock)
       provider.setWalletClient(walletClientEthereumMock)
@@ -120,8 +115,24 @@ describe('EVM provider', () => {
 
     it('Should overwrite walletClientEthereumMock', () => {
       const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-      provider.setWalletClient(walletClientPolygonMock)
-      expect(provider['_walletClient']).toBe(walletClientPolygonMock)
+      const walletClientEthereumMock2 = {
+        chain: mainnet,
+        account: {
+          address: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+        },
+      } as unknown as WalletClient
+      provider.setWalletClient(walletClientEthereumMock2)
+      expect(provider['_walletClient']).toBe(walletClientEthereumMock2)
+    })
+
+    it('Should throw if walletClient chain do not match publicClient chain', () => {
+      try {
+        new pTokensEvmProvider(publicClientEthereumMock, walletClientPolygonMock)
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual('WalletClient chainId 137 does not match PublicClient chainId 1')
+      }
     })
   })
 
@@ -144,6 +155,14 @@ describe('EVM provider', () => {
 
   describe('setPrivateKeyWalletClient', () => {
     it('Should add account from private key', () => {
+      jest.spyOn(viem, 'createWalletClient').mockReturnValue({
+        account: {
+          address: '0xdf3B180694aB22C577f7114D822D28b92cadFd75',
+        },
+        chain: {
+          id: 1,
+        },
+      } as unknown as WalletClient)
       const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
       provider.setPrivateKeyWalletClient('0x422c874bed50b69add046296530dc580f8e2e253879d98d66023b7897ab15742')
       expect(createWalletClient).toHaveBeenCalledTimes(1)
@@ -1278,7 +1297,7 @@ describe('EVM provider', () => {
       try {
         const provider = new pTokensEvmProvider(
           { ...publicClientEthereumMock, chain: { ...mainnet, id: -1 } },
-          walletClientEthereumMock,
+          { ...walletClientEthereumMock, chain: { ...mainnet, id: -1 } },
         )
         const getLogsMock = jest.fn().mockImplementation(({ toBlock }) => {
           const log1Promi = new Promise((resolve) =>

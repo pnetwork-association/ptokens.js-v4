@@ -9,7 +9,7 @@ import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
 import pNetworkAdapterAbi from '../src/abi/PNetworkAdapterAbi'
 
 import { eap } from './utils/eventAttestatorProof'
-import { publicClientEthereumMock, walletClientEthereumMock } from './utils/mock-viem-clients'
+import { publicClientEthereumMock, publicClientPolygonMock, walletClientEthereumMock } from './utils/mock-viem-clients'
 import settleReceipt from './utils/settleReceipt.json'
 import swapReceipt from './utils/swapReceipt.json'
 
@@ -89,7 +89,7 @@ describe('EVM asset', () => {
       const asset = new pTokensEvmAsset({
         assetInfo: assetInfo,
         adapterAddress: 'adapter-address',
-        provider: new pTokensEvmProvider(publicClientEthereumMock),
+        provider: new pTokensEvmProvider(publicClientPolygonMock),
       })
       expect(asset.adapterAddress).toStrictEqual('adapter-address')
       expect(asset.symbol).toStrictEqual('pToken-symbol')
@@ -100,7 +100,7 @@ describe('EVM asset', () => {
       expect(asset.assetAddress).toStrictEqual('pToken-address')
       expect(asset.assetInfo).toEqual(assetInfo)
       expect(asset.isNative).toEqual(assetInfo.isNative)
-      expect(asset.provider['_publicClient']).toStrictEqual(publicClientEthereumMock)
+      expect(asset.provider['_publicClient']).toStrictEqual(publicClientPolygonMock)
     })
 
     it('Should create a EVM asset from constructor with specified version and protocolId', () => {
@@ -124,7 +124,7 @@ describe('EVM asset', () => {
       const asset = new pTokensEvmAsset({
         assetInfo: assetInfo,
         adapterAddress: 'adapter-address',
-        provider: new pTokensEvmProvider(publicClientEthereumMock),
+        provider: new pTokensEvmProvider(publicClientPolygonMock),
         version: Version.V2,
         protocolId: Protocol.EOS,
       })
@@ -137,7 +137,7 @@ describe('EVM asset', () => {
       expect(asset.assetAddress).toStrictEqual('pToken-address')
       expect(asset.assetInfo).toEqual(assetInfo)
       expect(asset.isNative).toEqual(assetInfo.isNative)
-      expect(asset.provider['_publicClient']).toStrictEqual(publicClientEthereumMock)
+      expect(asset.provider['_publicClient']).toStrictEqual(publicClientPolygonMock)
     })
 
     it('Should throw if decimals are missing', () => {
@@ -185,7 +185,7 @@ describe('EVM asset', () => {
         new pTokensEvmAsset({
           assetInfo: assetInfo,
           adapterAddress: 'adapter-address',
-          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          provider: new pTokensEvmProvider(publicClientPolygonMock),
           version: Version.V2,
           protocolId: Protocol.EOS,
         })
