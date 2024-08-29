@@ -3,16 +3,16 @@ export enum Chain {
   SepoliaTestnet = '0xaa36a7',
 }
 
-export const Protocols = {
-  Bitcoin: 0x00,
-  Evm: 0x01,
-  Eos: 0x02,
-  Algorand: 0x03,
+export enum Protocol {
+  BITCOIN = 0x00,
+  EVM = 0x01,
+  EOS = 0x02,
+  ALGORAND = 0x03,
 }
 
-export const Versions = {
-  V1: 0x01,
-  V2: 0x02,
+export enum Version {
+  V1 = 0x01,
+  V2 = 0x02,
 }
 
 export enum BlockchainType {
