@@ -1,4 +1,4 @@
-import { BlockchainType } from 'ptokens-constants'
+import { BlockchainType, Protocol, Version } from 'ptokens-constants'
 import { validators, getters } from 'ptokens-helpers'
 
 import { AssetInfo } from './lib'
@@ -11,8 +11,8 @@ export abstract class pTokensAssetBuilder {
   protected _assetInfo: AssetInfo
   private _type: BlockchainType
   protected _adapterAddress: string
-  protected _version: string
-  protected _protocolId: string
+  protected _version: Version
+  protected _protocolId: Protocol
 
   /**
    * Create and initialize a pTokensAssetBuilder object.
@@ -44,20 +44,12 @@ export abstract class pTokensAssetBuilder {
 
   abstract setProvider(_provider: pTokensAssetProvider): this
 
-  get assetInfo() {
-    return this._assetInfo
-  }
-
-  get isNative() {
-    return this._assetInfo.isNative
-  }
-
   /**
    * Set the version for the token.
    * @param _version - The token version.
    * @returns The same builder. This allows methods chaining.
    */
-  setVersion(_version: string) {
+  setVersion(_version: Version) {
     this._version = _version
     return this
   }
@@ -67,7 +59,7 @@ export abstract class pTokensAssetBuilder {
    * @param _protocolId - The token protocolId.
    * @returns The same builder. This allows methods chaining.
    */
-  setProtocolId(_protocolId: string) {
+  setProtocolId(_protocolId: Protocol) {
     this._protocolId = _protocolId
     return this
   }
@@ -75,13 +67,6 @@ export abstract class pTokensAssetBuilder {
   setAssetInfo(_assetInfo: AssetInfo) {
     this._assetInfo = _assetInfo
     return this
-  }
-
-  /**
-   * Return the router address for the swap.
-   */
-  get adapterAddress(): string {
-    return this._adapterAddress || getters.getAdapterAddress(this._assetInfo.chainId)
   }
 
   /**
@@ -102,10 +87,16 @@ export abstract class pTokensAssetBuilder {
   private validate() {
     if (!this._chainId) throw new Error('Missing chain ID')
     if (!this._assetInfo) throw new Error('Missing asset info')
-    if (!this._adapterAddress) throw new Error('Missing adapter address')
+    if (!this._adapterAddress) {
+      const adapterAddress = getters.getAdapterAddress(this._chainId)
+      if (!adapterAddress)
+        throw new Error(`Adapter address for ${this._chainId} has not been found. Is this chain supported?`)
+      this._adapterAddress = adapterAddress
+    }
     if (!this._version) throw new Error('Missing version')
     if (!this._protocolId) throw new Error('Missing protocol ID')
-    if (!validators.isValidAddressByChainId(this.adapterAddress, this._type)) throw new Error('Invalid factory address')
+    if (!validators.isValidAddressByChainId(this._adapterAddress, this._type))
+      throw new Error('Invalid adapter address')
     if (this._decimals !== undefined) this._assetInfo.decimals = this._decimals
   }
 

@@ -62,14 +62,21 @@ export abstract class pTokensAsset {
    */
   constructor(_config: pTokenAssetConfig, _type: BlockchainType) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
+    if (!_config.assetInfo) throw new Error('Missing asset info')
     if (!_config.version) throw new Error('Missing asset version')
     if (!_config.protocolId) throw new Error('Missing asset protocolId')
-    if (_config.assetInfo.isNative === false)
+    if (_config.assetInfo.isNative === false) {
+      if (!_config.assetInfo.pTokenAddress) throw new Error('pTokenAddress is mandatory if token is not native')
       if (
         _config.assetInfo.underlyingAsset.pTokenAddress &&
         _config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress
       )
         throw new Error('pToken address does not match underlying asset pToken address')
+      if (_config.assetInfo.pTokenAddress === _config.assetInfo.underlyingAsset.tokenAddress)
+        throw new Error(
+          `pToken cannot be underlying of itself: ${_config.assetInfo.pTokenAddress} must be different from ${_config.assetInfo.underlyingAsset.tokenAddress}`,
+        )
+    }
     this._version = _config.version
     this._protocolId = _config.protocolId
     this._type = _type
