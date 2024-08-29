@@ -1,8 +1,8 @@
+import axios from 'axios'
 import PromiEvent from 'promievent'
 import { BlockchainType, Protocol, Version } from 'ptokens-constants'
 import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
 import { concat, Log, numberToHex, TransactionReceipt, WalletClient } from 'viem'
-import axios from 'axios'
 
 import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
 import {
@@ -34,6 +34,10 @@ export class pTokensEvmAsset extends pTokensAsset {
     if (!config.assetInfo.decimals) throw new Error('Missing decimals')
     if (!config.version) config.version = Version.V1
     if (!config.protocolId) config.protocolId = Protocol.EVM
+    if (config.assetInfo.chainId !== config.provider.chainId)
+      throw new Error(
+        `Provider chainId: ${config.provider.chainId} do not match with assetInfo chainId: ${config.assetInfo.chainId}`,
+      )
     super(config, BlockchainType.EVM)
     this._provider = config.provider
   }
@@ -59,6 +63,7 @@ export class pTokensEvmAsset extends pTokensAsset {
     return concat([version, protocolId, chainId])
   }
 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   protected swap(
     _amount: bigint,
     _recipient: string,
@@ -66,6 +71,7 @@ export class pTokensEvmAsset extends pTokensAsset {
     _fees = BigInt(0),
     _userData = '0x',
   ): PromiEvent<SwapResult> {
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     const promi = new PromiEvent<SwapResult>(
       (resolve, reject) =>
         (async () => {
@@ -120,11 +126,11 @@ export class pTokensEvmAsset extends pTokensAsset {
         {
           headers: {
             'Content-Type': 'application/json',
-          }
-        }
+          },
+        },
       )
       if (!data.signature) throw new Error('Data has been retrieved but no signature is available')
-      return { signature: data.signature as string };
+      return { signature: data.signature as string }
     } catch (_err) {
       throw _err
     }

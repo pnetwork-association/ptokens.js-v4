@@ -28,22 +28,18 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
   protected async _build(): Promise<pTokensEvmAsset> {
     this._chainId = this._provider.chainId
     const adapterAddress = getters.getAdapterAddress(this._chainId)
-    if (!adapterAddress) throw new Error('Adapter address is required')
+    if (!adapterAddress) throw new Error(`Adapter not found for ${this._chainId}. Is this chain supported?`)
     this._adapterAddress = adapterAddress
-    const pTokenAddress = this.assetInfo.pTokenAddress
+    const pTokenAddress = this._assetInfo.pTokenAddress
     if (pTokenAddress && !isAddress(pTokenAddress))
       throw new Error(`pTokenAddress ${pTokenAddress} must be a valid address`)
-    if (!this.assetInfo.isNative) {
-      if (this.assetInfo.pTokenAddress != this.assetInfo.underlyingAsset.tokenAddress)
-        throw new Error(
-          `pToken cannot be underlying of itself: ${this.assetInfo.pTokenAddress} must be different from ${this.assetInfo.underlyingAsset.tokenAddress}`,
-        )
-    }
 
     const config: pTokenEvmAssetConfig = {
-      assetInfo: this.assetInfo,
+      assetInfo: this._assetInfo,
       provider: this._provider,
-      adapterAddress: this.adapterAddress,
+      adapterAddress: this._adapterAddress,
+      protocolId: this._protocolId,
+      version: this._version,
     }
 
     return new pTokensEvmAsset(config)

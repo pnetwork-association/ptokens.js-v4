@@ -68,7 +68,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     if (!_publicClient.chain) throw new Error('No chain in specified publicClient')
     this._publicClient = _publicClient
     this._chainId = _publicClient.chain.id
-    if (_walletClient) this._walletClient = _walletClient
+    if (_walletClient) this.setWalletClient(_walletClient)
   }
 
   /**
@@ -104,6 +104,10 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
    * @returns The same builder. This allows methods chaining.
    */
   setWalletClient(_walletClient: WalletClient): this {
+    if (_walletClient.chain?.id !== this._chainId)
+      throw new Error(
+        `WalletClient chainId ${_walletClient.chain?.id} does not match PublicClient chainId ${this._chainId}`,
+      )
     this._walletClient = _walletClient
     return this
   }
@@ -285,7 +289,7 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
         (async () => {
           try {
             const chainId = this._publicClient.chain?.id
-            const adapterAddress = getters.getAdapterAddress(chainId as number)
+            const adapterAddress = getters.getAdapterAddress(chainId)
             if (!adapterAddress) {
               throw new Error(`Adapter address for ${chainId} not found`)
             }
