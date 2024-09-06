@@ -1,5 +1,7 @@
 import { AbiEvent } from 'abitype'
+import { Protocol } from 'ptokens-constants'
 import { Operation } from 'ptokens-entities'
+import { validators } from 'ptokens-helpers'
 import {
   Log,
   decodeEventLog,
@@ -14,11 +16,13 @@ import {
   pad,
   sha256,
   numberToHex,
+  erc20Abi,
+  zeroAddress,
+  isAddress,
 } from 'viem'
 
 import pNetworkAdapterAbi from '../abi/PNetworkAdapterAbi'
-
-export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+import { pTokensEvmProvider } from '../ptokens-evm-provider'
 
 export enum EVENT_NAMES {
   SWAP = 'Swap',
@@ -145,4 +149,112 @@ export const getOperationFromTransactionReceipt = (
 ): Operation => {
   const swapLog = getLogFromTransactionReceipt(_swapReceipt)
   return getOperationFromLog(swapLog, _chainId)
+}
+
+export const getErc20Address = async (
+  _adapterAddress: `0x${string}`,
+  _evmProvider: pTokensEvmProvider,
+): Promise<`0x${string}`> => {
+  try {
+    return await _evmProvider.makeContractCall<`0x${string}`, []>({
+      contractAddress: _adapterAddress,
+      method: 'erc20',
+      abi: pNetworkAdapterAbi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
+}
+
+export const getXerc20Address = async (
+  _adapterAddress: `0x${string}`,
+  _evmProvider: pTokensEvmProvider,
+): Promise<`0x${string}`> => {
+  if (!validators.isValidAddressByChainId(_adapterAddress, Protocol.EVM)) throw new Error('Invalid Adapter Address')
+  try {
+    return await _evmProvider.makeContractCall<`0x${string}`, []>({
+      contractAddress: _adapterAddress,
+      method: 'xerc20',
+      abi: pNetworkAdapterAbi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
+}
+
+export const getLockboxAddress = async (
+  _xerc20Address: `0x${string}`,
+  _evmProvider: pTokensEvmProvider,
+): Promise<`0x${string}`> => {
+  if (!validators.isValidAddressByChainId(_xerc20Address, Protocol.EVM)) throw new Error('Invalid xerc20 Address')
+  try {
+    return await _evmProvider.makeContractCall<`0x${string}`, []>({
+      contractAddress: _xerc20Address,
+      method: 'lockbox',
+      abi: pNetworkAdapterAbi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
+}
+
+export const isNativeAsset = async (
+  _xerc20Address: `0x${string}`,
+  _evmProvider: pTokensEvmProvider,
+): Promise<boolean> => {
+  if (!isAddress(_xerc20Address)) throw new Error('Invalid xerc20 Address')
+  const lockboxAddress = await getLockboxAddress(_xerc20Address, _evmProvider)
+  if (lockboxAddress === zeroAddress) return false
+  else return true
+}
+
+export const getAssetName = async (_assetAddress: `0x${string}`, _evmProvider: pTokensEvmProvider): Promise<string> => {
+  if (!validators.isValidAddressByChainId(_assetAddress, Protocol.EVM)) throw new Error('Invalid xerc20 Address')
+  try {
+    return await _evmProvider.makeContractCall<string, []>({
+      contractAddress: _assetAddress,
+      method: 'name',
+      abi: erc20Abi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
+}
+
+export const getAssetSymbol = async (
+  _assetAddress: `0x${string}`,
+  _evmProvider: pTokensEvmProvider,
+): Promise<string> => {
+  if (!validators.isValidAddressByChainId(_assetAddress, Protocol.EVM)) throw new Error('Invalid xerc20 Address')
+  try {
+    return await _evmProvider.makeContractCall<string, []>({
+      contractAddress: _assetAddress,
+      method: 'symbol',
+      abi: erc20Abi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
+}
+
+export const getAssetDecimals = async (
+  _assetAddress: `0x${string}`,
+  _evmProvider: pTokensEvmProvider,
+): Promise<number> => {
+  if (!validators.isValidAddressByChainId(_assetAddress, Protocol.EVM)) throw new Error('Invalid xerc20 Address')
+  try {
+    return await _evmProvider.makeContractCall<number, []>({
+      contractAddress: _assetAddress,
+      method: 'decimals',
+      abi: erc20Abi,
+    })
+  } catch (_err) {
+    if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+    throw new Error(_err.message)
+  }
 }
