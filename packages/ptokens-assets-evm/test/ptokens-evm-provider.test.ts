@@ -27,6 +27,7 @@ import swapReceipt from './utils/swapReceipt.json'
 //   }
 // })
 
+const adapterAddress = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'
 const peginSwap = swapReceipt[0] as unknown as TransactionReceipt
 const pegoutSwap = swapReceipt[1] as unknown as TransactionReceipt
 const peginSwapLog = peginSwap.logs[8] as unknown as Log
@@ -1284,7 +1285,7 @@ describe('EVM provider', () => {
       publicClientEthereumMock.getLogs = getLogsMock
       publicClientEthereumMock.getBlockNumber = getBlockNumberMock
       const onLog = jest.fn()
-      const events = await provider.getSwaps(0n).on(EVENT_NAMES.SWAP, onLog)
+      const events = await provider.getSwaps(adapterAddress, 0n).on(EVENT_NAMES.SWAP, onLog)
       expect(onLog).toHaveBeenCalledTimes(4)
       expect(onLog).toHaveBeenNthCalledWith(1, pegoutSwapLog)
       expect(onLog).toHaveBeenNthCalledWith(2, peginSwapLog)
@@ -1293,7 +1294,7 @@ describe('EVM provider', () => {
       expect(events).toStrictEqual([pegoutSwapLog, peginSwapLog, peginSwapLog, pegoutSwapLog])
     })
 
-    it('Should throw if adapter is not defined for specified chainId', async () => {
+    it('Should throw if adapter address is invalid', async () => {
       try {
         const provider = new pTokensEvmProvider(
           { ...publicClientEthereumMock, chain: { ...mainnet, id: -1 } },
@@ -1337,11 +1338,11 @@ describe('EVM provider', () => {
         publicClientEthereumMock.getLogs = getLogsMock
         publicClientEthereumMock.getBlockNumber = getBlockNumberMock
         const onLog = jest.fn()
-        await provider.getSwaps(0n).on(EVENT_NAMES.SWAP, onLog)
+        await provider.getSwaps('invalid-address', 0n).on(EVENT_NAMES.SWAP, onLog)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-        expect(_err.message).toEqual('Adapter address for -1 not found')
+        expect(_err.message).toEqual('Adapter address: invalid-address is not valid')
       }
     })
 
@@ -1395,7 +1396,7 @@ describe('EVM provider', () => {
         publicClientEthereumMock.getLogs = getLogsMock
         publicClientEthereumMock.getBlockNumber = getBlockNumberMock
         const onLog = jest.fn()
-        await provider.getSwaps(0n).on(EVENT_NAMES.SWAP, onLog)
+        await provider.getSwaps(adapterAddress, 0n).on(EVENT_NAMES.SWAP, onLog)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
