@@ -1,15 +1,14 @@
 import axios from 'axios'
 import PromiEvent from 'promievent'
-import { BlockchainType, Protocol, Version } from 'ptokens-constants'
-import { AssetInfo, NativeAsset, SettleResult, SwapResult } from 'ptokens-entities'
+import { Chain, Protocol, Version } from 'ptokens-constants'
+import { AssetInfo, SettleResult, SwapResult } from 'ptokens-entities'
 import { TransactionReceipt } from 'viem'
-import { mainnet, polygon } from 'viem/chains'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
 import pNetworkAdapterAbi from '../src/abi/PNetworkAdapterAbi'
 
 import { eap } from './utils/eventAttestatorProof'
-import { publicClientEthereumMock, publicClientPolygonMock, walletClientEthereumMock } from './utils/mock-viem-clients'
+import { publicClientEthereumMock, walletClientEthereumMock } from './utils/mock-viem-clients'
 import settleReceipt from './utils/settleReceipt.json'
 import swapReceipt from './utils/swapReceipt.json'
 
@@ -19,18 +18,68 @@ const mockedAxios = axios as jest.Mocked<typeof axios>
 const peginSwapReceipt = swapReceipt[0] as unknown as TransactionReceipt
 const peginSettleReceipt = settleReceipt[0] as unknown as TransactionReceipt
 
-const operation = {
-  amount: 5888200000000000000n, // using an actual transaction which amount differs from the one called above.
-  blockId: peginSwapReceipt.blockHash,
-  data: '0x',
-  destinationChainId: '0x0000000000000000000000000000000000000000000000000000000000000038',
-  erc20: '0x000000000000000000000000700b6a60ce7eaaea56f065753d8dcb9653dbad35',
-  nonce: 5n,
-  originChainId: '0x0000000000000000000000000000000000000000000000000000000000000001',
-  recipient: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-  sender: '0x000000000000000000000000a0ee7a142d267c1f36714e4a8f75612f20a79720',
-  txId: '0x36242dcbc54db506555d65aa13a16946054d0bdb66102130ab105573e43ccb7c',
+const destinationAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+const nativeTokenAddress = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'
+const pTokenAddress = '0x199A551C5B09F08a03536668416778a4C2239148'
+const nativeChain = Chain.EthereumMainnet
+const chain = Chain.EthereumMainnet
+const nativeAssetInfo: AssetInfo = {
+  isNative: true,
+  nativeChain: nativeChain,
+  chain: chain,
+  name: 'token-name',
+  symbol: 'token-symbol',
+  decimals: 18,
+  address: nativeTokenAddress,
+  pTokenAddress: pTokenAddress,
+  nativeTokenAddress: nativeTokenAddress,
 }
+const pTokenAssetInfo: AssetInfo = {
+  isNative: false,
+  nativeChain: nativeChain,
+  chain: chain,
+  name: 'token-name',
+  symbol: 'token-symbol',
+  decimals: 18,
+  address: pTokenAddress,
+  pTokenAddress: pTokenAddress,
+  nativeTokenAddress: nativeTokenAddress,
+}
+const brokenNativeAssetInfo: AssetInfo = {
+  isNative: true,
+  nativeChain: nativeChain,
+  chain: chain,
+  name: 'token-name',
+  symbol: 'token-symbol',
+  decimals: 18,
+  address: pTokenAddress,
+  pTokenAddress: pTokenAddress,
+  nativeTokenAddress: nativeTokenAddress,
+}
+const brokenpTokenAssetInfo: AssetInfo = {
+  isNative: false,
+  nativeChain: nativeChain,
+  chain: chain,
+  name: 'token-name',
+  symbol: 'token-symbol',
+  decimals: 18,
+  address: nativeTokenAddress,
+  pTokenAddress: pTokenAddress,
+  nativeTokenAddress: nativeTokenAddress,
+}
+
+// const operation = {
+//   amount: 5888200000000000000n, // using an actual transaction which amount differs from the one called above.
+//   blockId: peginSwapReceipt.blockHash,
+//   data: '0x',
+//   destinationChainId: '0x0000000000000000000000000000000000000000000000000000000000000038',
+//   erc20: '0x000000000000000000000000700b6a60ce7eaaea56f065753d8dcb9653dbad35',
+//   nonce: 5n,
+//   originChainId: '0x0000000000000000000000000000000000000000000000000000000000000001',
+//   recipient: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+//   sender: '0x000000000000000000000000a0ee7a142d267c1f36714e4a8f75612f20a79720',
+//   txId: '0x36242dcbc54db506555d65aa13a16946054d0bdb66102130ab105573e43ccb7c',
+// }
 const eventId = '0x681c9ff13cb0777400667bcb8491ce325870ca61325bcd2e371b325845a97805'
 const metadata = { signature: eap[0].signature }
 const preimage =
@@ -43,156 +92,156 @@ describe('EVM asset', () => {
 
   describe('EVM asset constructor', () => {
     it('Should create a native EVM asset from constructor', () => {
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
       })
       expect(asset.adapterAddress).toStrictEqual('adapter-address')
-      expect(asset.symbol).toStrictEqual('token-symbol')
-      expect(asset.type).toStrictEqual(BlockchainType.EVM)
+      expect(asset.assetInfo).toStrictEqual(nativeAssetInfo)
+      expect(asset.protocol).toStrictEqual(Protocol.EVM)
       expect(asset.version).toStrictEqual(Version.V1)
-      expect(asset.protocolId).toStrictEqual(Protocol.EVM)
-      expect(asset.chainId).toStrictEqual(assetInfo.chainId)
-      expect(asset.assetAddress).toStrictEqual('token-address')
-      expect(asset.assetInfo).toEqual(assetInfo)
-      expect(asset.isNative).toEqual(assetInfo.isNative)
+      expect(asset.chainId).toStrictEqual(publicClientEthereumMock.chain?.id)
       expect(asset.provider['_publicClient']).toStrictEqual(publicClientEthereumMock)
     })
 
     it('Should create a pToken EVM asset from constructor', () => {
-      const nativeAsset = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as NativeAsset
-      const assetInfo = {
-        isNative: false,
-        name: 'pToken-name',
-        chainId: polygon.id,
-        symbol: 'pToken-symbol',
-        pTokenAddress: 'pToken-address',
-        decimals: 18,
-        underlyingAsset: nativeAsset,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: pTokenAssetInfo,
         adapterAddress: 'adapter-address',
-        provider: new pTokensEvmProvider(publicClientPolygonMock),
+        provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
       })
       expect(asset.adapterAddress).toStrictEqual('adapter-address')
-      expect(asset.symbol).toStrictEqual('pToken-symbol')
-      expect(asset.type).toStrictEqual(BlockchainType.EVM)
+      expect(asset.assetInfo).toStrictEqual(pTokenAssetInfo)
+      expect(asset.protocol).toStrictEqual(Protocol.EVM)
       expect(asset.version).toStrictEqual(Version.V1)
-      expect(asset.protocolId).toStrictEqual(Protocol.EVM)
-      expect(asset.chainId).toStrictEqual(assetInfo.chainId)
-      expect(asset.assetAddress).toStrictEqual('pToken-address')
-      expect(asset.assetInfo).toEqual(assetInfo)
-      expect(asset.isNative).toEqual(assetInfo.isNative)
-      expect(asset.provider['_publicClient']).toStrictEqual(publicClientPolygonMock)
+      expect(asset.chainId).toStrictEqual(publicClientEthereumMock.chain?.id)
+      expect(asset.provider['_publicClient']).toStrictEqual(publicClientEthereumMock)
     })
 
-    it('Should create a EVM asset from constructor with specified version and protocolId', () => {
-      const nativeAsset = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as NativeAsset
-      const assetInfo = {
-        isNative: false,
-        name: 'pToken-name',
-        chainId: polygon.id,
-        symbol: 'pToken-symbol',
-        pTokenAddress: 'pToken-address',
-        decimals: 18,
-        underlyingAsset: nativeAsset,
-      } as AssetInfo
-      const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
-        adapterAddress: 'adapter-address',
-        provider: new pTokensEvmProvider(publicClientPolygonMock),
-        version: Version.V2,
-        protocolId: Protocol.EOS,
-      })
-      expect(asset.adapterAddress).toStrictEqual('adapter-address')
-      expect(asset.symbol).toStrictEqual('pToken-symbol')
-      expect(asset.type).toStrictEqual(BlockchainType.EVM)
-      expect(asset.version).toStrictEqual(Version.V2)
-      expect(asset.protocolId).toStrictEqual(Protocol.EOS)
-      expect(asset.chainId).toStrictEqual(assetInfo.chainId)
-      expect(asset.assetAddress).toStrictEqual('pToken-address')
-      expect(asset.assetInfo).toEqual(assetInfo)
-      expect(asset.isNative).toEqual(assetInfo.isNative)
-      expect(asset.provider['_publicClient']).toStrictEqual(publicClientPolygonMock)
-    })
-
-    it('Should throw if decimals are missing', () => {
+    it('Should throw if asset is native and chain do not match with nativeChain', () => {
       try {
-        const assetInfo = {
-          isNative: true,
-          name: 'token-name',
-          chainId: mainnet.id,
-          symbol: 'token-symbol',
-          tokenAddress: 'token-address',
-          decimals: 18,
-        }
         new pTokensEvmAsset({
-          assetInfo: { ...assetInfo, decimals: undefined } as unknown as AssetInfo,
+          assetInfo: { ...nativeAssetInfo, nativeChain: Chain.PolygonMainnet },
           adapterAddress: 'adapter-address',
           provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: '' as unknown as Version,
         })
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-        expect(_err.message).toEqual('Missing decimals')
+        expect(_err.message).toEqual('the asset is native: chain 0x1 and nativeChain 0x89 must be equal')
       }
     })
 
-    it('Should throw if pTokenAddress do not match underlying asset pTokenAddress is missing', () => {
+    it('Should throw if asset chain do not match with provider chain', () => {
       try {
-        const nativeAsset = {
-          isNative: true,
-          name: 'token-name',
-          chainId: mainnet.id,
-          symbol: 'token-symbol',
-          tokenAddress: 'token-address',
-          decimals: 18,
-          pTokenAddress: 'pToken-address-2',
-        } as NativeAsset
-        const assetInfo = {
-          isNative: false,
-          name: 'pToken-name',
-          chainId: polygon.id,
-          symbol: 'pToken-symbol',
-          pTokenAddress: 'pToken-address',
-          decimals: 18,
-          underlyingAsset: nativeAsset,
-        } as AssetInfo
         new pTokensEvmAsset({
-          assetInfo: assetInfo,
+          assetInfo: { ...pTokenAssetInfo, chain: Chain.PolygonMainnet },
           adapterAddress: 'adapter-address',
-          provider: new pTokensEvmProvider(publicClientPolygonMock),
-          version: Version.V2,
-          protocolId: Protocol.EOS,
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: '' as unknown as Version,
         })
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-        expect(_err.message).toEqual('pToken address does not match underlying asset pToken address')
+        expect(_err.message).toEqual('Provider chainId: 1 do not match with assetInfo chainId: 137')
+      }
+    })
+
+    it('Should throw if asset address is not valid', () => {
+      try {
+        new pTokensEvmAsset({
+          assetInfo: { ...pTokenAssetInfo, address: 'invalid-address', pTokenAddress: 'invalid-address' },
+          adapterAddress: 'adapter-address',
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: '' as unknown as Version,
+        })
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual('pTokenAddress invalid-address must be a valid address')
+      }
+    })
+
+    it('Should throw if asset pTokenAddress is not valid', () => {
+      try {
+        new pTokensEvmAsset({
+          assetInfo: { ...nativeAssetInfo, pTokenAddress: 'invalid-address' },
+          adapterAddress: 'adapter-address',
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: '' as unknown as Version,
+        })
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual('pTokenAddress invalid-address must be a valid address')
+      }
+    })
+
+    it('Should throw if asset nativeTokenAddress is not valid', () => {
+      try {
+        new pTokensEvmAsset({
+          assetInfo: { ...pTokenAssetInfo, nativeTokenAddress: 'invalid-address' },
+          adapterAddress: 'adapter-address',
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: '' as unknown as Version,
+        })
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual('nativeTokenAddress invalid-address must be a valid address')
+      }
+    })
+
+    it('Should throw if pToken address do not match pTokenAddress', () => {
+      try {
+        new pTokensEvmAsset({
+          assetInfo: brokenpTokenAssetInfo,
+          adapterAddress: 'adapter-address',
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: Version.V2,
+        })
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual(
+          `the asset is not native: pTokenAddress ${brokenpTokenAssetInfo.pTokenAddress} and address ${brokenpTokenAssetInfo.address} must be equal`,
+        )
+      }
+    })
+
+    it('Should throw if native address do not match nativeAssetAddress', () => {
+      try {
+        new pTokensEvmAsset({
+          assetInfo: brokenNativeAssetInfo,
+          adapterAddress: 'adapter-address',
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: Version.V2,
+        })
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual(
+          `the asset is native: nativeTokenAddress ${brokenNativeAssetInfo.nativeTokenAddress} and address ${brokenNativeAssetInfo.address} must be equal`,
+        )
+      }
+    })
+
+    it('Should throw if assetInfo is missing', () => {
+      try {
+        new pTokensEvmAsset({
+          assetInfo: undefined as unknown as AssetInfo,
+          adapterAddress: 'adapter-address',
+          provider: new pTokensEvmProvider(publicClientEthereumMock),
+          version: Version.V2,
+        })
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual('Missing assetInfo')
       }
     })
   })
@@ -203,18 +252,11 @@ describe('EVM asset', () => {
     })
 
     it('Should add a walletClient', () => {
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
       })
       asset.setWalletClient(walletClientEthereumMock)
       expect(asset.provider['_walletClient']).toStrictEqual(walletClientEthereumMock)
@@ -227,18 +269,11 @@ describe('EVM asset', () => {
     })
 
     it('Should return asset Context', () => {
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
       })
       const context = asset.getContext()
       expect(context).toStrictEqual('0x01010000000000000000000000000000000000000000000000000000000000000001')
@@ -251,25 +286,34 @@ describe('EVM asset', () => {
     })
 
     it('Should throw if provider is missing', async () => {
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
       })
       try {
-        await asset['swap'](12345678n, 'destination-address', 'destination-chain-id')
+        await asset['swap'](12345678n, destinationAddress, Chain.BscMainnet)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
         expect(_err.message).toEqual('WalletClient not provided')
+      }
+    })
+
+    it('Should throw if destination address is not valid', async () => {
+      const asset = new pTokensEvmAsset({
+        assetInfo: nativeAssetInfo,
+        adapterAddress: 'adapter-address',
+        provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
+      })
+      try {
+        await asset['swap'](12345678n, 'invalid-address', Chain.BscMainnet)
+        fail()
+      } catch (_err) {
+        if (!(_err instanceof Error)) throw new Error('Invalid Error type')
+        expect(_err.message).toEqual(`invalid-address is not a valid address for chain ${Chain.BscMainnet}`)
       }
     })
 
@@ -286,22 +330,15 @@ describe('EVM asset', () => {
         return promi
       })
       provider.makeContractSend = makeContractSendMock
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       let txHashBroadcasted = ''
       let swapResultConfirmed = null
-      const ret = await asset['swap'](123456789n, 'destination-address', 'destination-chain-id')
+      const ret = await asset['swap'](123456789n, destinationAddress, Chain.BscMainnet)
         .on('txBroadcasted', (_txHash) => {
           txHashBroadcasted = _txHash
         })
@@ -335,7 +372,7 @@ describe('EVM asset', () => {
           method: 'swap',
           value: 0n,
         },
-        ['token-address', 123456789n, 'destination-chain-id', 'destination-address', '0x'],
+        [nativeAssetInfo.address, 123456789n, Chain.BscMainnet, destinationAddress, '0x'],
       )
     })
 
@@ -347,21 +384,14 @@ describe('EVM asset', () => {
         })
         return promi
       })
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       try {
-        await asset['swap'](123456789n, 'destination-address', 'destination-chain-id')
+        await asset['swap'](123456789n, destinationAddress, Chain.BscMainnet)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -377,22 +407,15 @@ describe('EVM asset', () => {
         })
         return promi
       })
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       asset['_provider'] = undefined as unknown as pTokensEvmProvider
       try {
-        await asset['swap'](123456789n, 'destination-address', 'destination-chain-id')
+        await asset['swap'](123456789n, destinationAddress, Chain.BscMainnet)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -408,18 +431,11 @@ describe('EVM asset', () => {
 
     it('Should return the signature computed by EventAttestator', async () => {
       const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       const axiosMockResponse = { data: { signature: eap[0].signature } }
       mockedAxios.post.mockResolvedValue(axiosMockResponse)
@@ -431,18 +447,11 @@ describe('EVM asset', () => {
 
     it('Should throw if signature is not returned', async () => {
       const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       const axiosMockResponse = { data: { signature: undefined } }
       mockedAxios.post.mockResolvedValue(axiosMockResponse)
@@ -462,21 +471,14 @@ describe('EVM asset', () => {
     })
 
     it('Should throw if provider is missing', async () => {
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: new pTokensEvmProvider(publicClientEthereumMock),
+        version: Version.V1,
       })
       try {
-        await asset['settle'](operation, peginSwapReceipt.logs[8], metadata)
+        await asset['settle'](peginSwapReceipt.logs[8], Chain.EthereumMainnet, metadata)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -497,22 +499,15 @@ describe('EVM asset', () => {
         return promi
       })
       provider.makeContractSend = makeContractSendMock
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       let txHashBroadcasted = ''
       let settleResultConfirmed = null
-      const ret = await asset['settle'](operation, peginSwapReceipt.logs[8], metadata)
+      const ret = await asset['settle'](peginSwapReceipt.logs[8], Chain.EthereumMainnet, metadata)
         .on('txBroadcasted', (_txHash) => {
           txHashBroadcasted = _txHash
         })
@@ -560,21 +555,14 @@ describe('EVM asset', () => {
         })
         return promi
       })
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       try {
-        await asset['settle'](operation, peginSwapReceipt.logs[8], metadata)
+        await asset['settle'](peginSwapReceipt.logs[8], Chain.EthereumMainnet, metadata)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -590,22 +578,15 @@ describe('EVM asset', () => {
         })
         return promi
       })
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       asset['_provider'] = undefined as unknown as pTokensEvmProvider
       try {
-        await asset['settle'](operation, peginSwapReceipt.logs[8], metadata)
+        await asset['settle'](peginSwapReceipt.logs[8], Chain.EthereumMainnet, metadata)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -626,21 +607,14 @@ describe('EVM asset', () => {
         return promi
       })
       provider.makeContractSend = makeContractSendMock
-      const assetInfo = {
-        isNative: true,
-        name: 'token-name',
-        chainId: mainnet.id,
-        symbol: 'token-symbol',
-        tokenAddress: 'token-address',
-        decimals: 18,
-      } as AssetInfo
       const asset = new pTokensEvmAsset({
-        assetInfo: assetInfo,
+        assetInfo: nativeAssetInfo,
         adapterAddress: 'adapter-address',
         provider: provider,
+        version: Version.V1,
       })
       try {
-        await asset['settle'](operation, peginSwapReceipt.logs[8], metadata)
+        await asset['settle'](peginSwapReceipt.logs[8], Chain.EthereumMainnet, metadata)
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
