@@ -1,44 +1,57 @@
-import { BlockchainType } from 'ptokens-constants'
+import { Chain, Protocol } from 'ptokens-constants'
 import { pTokensAssetBuilder } from 'ptokens-entities'
-import { getters } from 'ptokens-helpers'
-import { isAddress } from 'viem'
+import { stringUtils, getters } from 'ptokens-helpers'
 
+import { getAssetDecimals, getAssetName, getAssetSymbol, getErc20Address, getXerc20Address, isNativeAsset } from './lib'
 import { pTokenEvmAssetConfig, pTokensEvmAsset } from './ptokens-evm-asset'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
+export type pTokensEvmAssetBuilderParams = {
+  provider: pTokensEvmProvider
+  assetNativeChain: Chain
+}
+
 export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
   private _provider: pTokensEvmProvider
+  private _nativeChain: Chain
 
-  constructor(_provider: pTokensEvmProvider) {
-    super(BlockchainType.EVM)
-    this._provider = _provider
-  }
-
-  /**
-   * Set a pTokensEvmProvider for creating and sending transactions.
-   * @param _provider - A pTokensEvmProvider object.
-   * @returns The same builder. This allows methods chaining.
-   */
-  setProvider(_provider: pTokensEvmProvider): this {
-    this._provider = _provider
-    return this
+  constructor(_buildParams: pTokensEvmAssetBuilderParams) {
+    super(Protocol.EVM)
+    this._provider = _buildParams.provider
+    this._nativeChain = _buildParams.assetNativeChain
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
   protected async _build(): Promise<pTokensEvmAsset> {
-    this._chainId = this._provider.chainId
-    const adapterAddress = getters.getAdapterAddress(this._chainId)
-    if (!adapterAddress) throw new Error(`Adapter not found for ${this._chainId}. Is this chain supported?`)
-    this._adapterAddress = adapterAddress
-    const pTokenAddress = this._assetInfo.pTokenAddress
-    if (pTokenAddress && !isAddress(pTokenAddress))
-      throw new Error(`pTokenAddress ${pTokenAddress} must be a valid address`)
+    if (!this._provider) throw new Error('Provider not found')
+    const adapterAddress = stringUtils.addHexPrefix(this._adapterAddress)
+    if (!this._assetInfo) {
+      const erc20Address = await getErc20Address(adapterAddress, this._provider)
+      const xerc20Address = await getXerc20Address(adapterAddress, this._provider)
+      const isNative = await isNativeAsset(xerc20Address, this._provider)
+      this.setAssetInfo({
+        isNative: isNative,
+        nativeChain: this._nativeChain,
+        chain: getters.getChain(this._provider.chainId),
+        name: isNative
+          ? await getAssetName(erc20Address, this._provider)
+          : await getAssetName(xerc20Address, this._provider),
+        symbol: isNative
+          ? await getAssetSymbol(erc20Address, this._provider)
+          : await getAssetSymbol(xerc20Address, this._provider),
+        decimals: isNative
+          ? await getAssetDecimals(erc20Address, this._provider)
+          : await getAssetDecimals(xerc20Address, this._provider),
+        address: isNative ? erc20Address : xerc20Address,
+        pTokenAddress: xerc20Address,
+        nativeTokenAddress: erc20Address,
+      })
+    }
 
     const config: pTokenEvmAssetConfig = {
       assetInfo: this._assetInfo,
       provider: this._provider,
       adapterAddress: this._adapterAddress,
-      protocolId: this._protocolId,
       version: this._version,
     }
 
