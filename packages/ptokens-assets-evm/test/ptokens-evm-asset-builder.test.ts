@@ -1,243 +1,226 @@
-import { BlockchainType, Protocol, Version } from 'ptokens-constants'
-import { AssetInfo, NativeAsset } from 'ptokens-entities'
-import { getters } from 'ptokens-helpers'
-import { bsc, mainnet, polygon } from 'viem/chains'
+import { Chain, Protocol, Version } from 'ptokens-constants'
+import { AssetInfo } from 'ptokens-entities'
+import { zeroAddress } from 'viem'
+import { mainnet } from 'viem/chains'
 
 import { pTokensEvmAssetBuilder, pTokensEvmProvider } from '../src'
+import * as utils from '../src/lib'
 
-import {
-  publicClientEthereumMock,
-  walletClientEthereumMock,
-  publicClientBscMock,
-  walletClientBscMock,
-  publicClientPolygonMock,
-  walletClientPolygonMock,
-} from './utils/mock-viem-clients'
+import { publicClientEthereumMock, walletClientEthereumMock } from './utils/mock-viem-clients'
+
+const adapterAddress = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'
+const nativeTokenAddress = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512'
+const pTokenAddress = '0x199A551C5B09F08a03536668416778a4C2239148'
+const nativeChain = Chain.EthereumMainnet
+const chain = Chain.EthereumMainnet
+const nativeAssetInfo: AssetInfo = {
+  isNative: true,
+  nativeChain: nativeChain,
+  chain: chain,
+  name: 'token-name',
+  symbol: 'token-symbol',
+  decimals: 18,
+  address: nativeTokenAddress,
+  pTokenAddress: pTokenAddress,
+  nativeTokenAddress: nativeTokenAddress,
+}
+const pTokenAssetInfo: AssetInfo = {
+  isNative: false,
+  nativeChain: nativeChain,
+  chain: chain,
+  name: 'token-name',
+  symbol: 'token-symbol',
+  decimals: 18,
+  address: pTokenAddress,
+  pTokenAddress: pTokenAddress,
+  nativeTokenAddress: nativeTokenAddress,
+}
 
 describe('EVM asset', () => {
-  beforeAll(() => {
+  beforeEach(() => {
     jest.restoreAllMocks()
   })
 
   it('Should create a native EVM asset with provider', async () => {
-    const assetInfo = {
-      isNative: true,
-      name: 'token-name',
-      chainId: mainnet.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-      pTokenAddress: '0xA15BB66138824a1c7167f5E85b957d04Dd34E468',
-    } as AssetInfo
+    const getErc20AddressSpy = jest
+      .spyOn(utils, 'getErc20Address')
+      .mockReturnValue(new Promise((resolve) => resolve(nativeTokenAddress)))
+    const getXerc20AddressSpy = jest
+      .spyOn(utils, 'getXerc20Address')
+      .mockReturnValue(new Promise((resolve) => resolve(pTokenAddress)))
+    const getAssetNameSpy = jest
+      .spyOn(utils, 'getAssetName')
+      .mockReturnValue(new Promise((resolve) => resolve('token-name')))
+    const getAssetSymbolSpy = jest
+      .spyOn(utils, 'getAssetSymbol')
+      .mockReturnValue(new Promise((resolve) => resolve('token-symbol')))
+    const getAssetDecimalsSpy = jest
+      .spyOn(utils, 'getAssetDecimals')
+      .mockReturnValue(new Promise((resolve) => resolve(18)))
+    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+    const getLockboxAddressSpy = jest
+      .spyOn(utils, 'getLockboxAddress')
+      .mockReturnValue(new Promise((resolve) => resolve('0x1B48422412528F4d02F8B4B6c6c8a4334E84A57C')))
+
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
-    builder.setChainId(assetInfo.chainId)
-    builder.setAssetInfo(assetInfo)
-    builder.setProvider(provider)
-    builder.setProtocolId(Protocol.EOS)
-    builder.setVersion(Version.V2)
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    builder.setAdapterAddress(adapterAddress)
+    builder.setVersion(Version.V1)
     const asset = await builder.build()
-    expect(asset.adapterAddress).toStrictEqual(getters.getAdapterAddress(assetInfo.chainId))
-    expect(asset.type).toStrictEqual(BlockchainType.EVM)
-    expect(asset.assetAddress).toStrictEqual('0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35')
-    expect(asset.chainId).toStrictEqual(assetInfo.chainId)
-    expect(asset.protocolId).toStrictEqual(Protocol.EOS)
-    expect(asset.version).toStrictEqual(Version.V2)
-    expect(asset.symbol).toStrictEqual(assetInfo.symbol)
-    expect(asset.provider).toEqual(provider)
-    expect(asset.assetInfo).toBe(assetInfo)
+    expect(getErc20AddressSpy).toHaveBeenCalledTimes(1)
+    expect(getErc20AddressSpy).toHaveBeenCalledWith(adapterAddress, provider)
+    expect(getXerc20AddressSpy).toHaveBeenCalledTimes(1)
+    expect(getXerc20AddressSpy).toHaveBeenCalledWith(adapterAddress, provider)
+    expect(getLockboxAddressSpy).toHaveBeenCalledTimes(1)
+    expect(getLockboxAddressSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(getAssetNameSpy).toHaveBeenCalledTimes(1)
+    expect(getAssetNameSpy).toHaveBeenCalledWith(nativeTokenAddress, provider)
+    expect(getAssetSymbolSpy).toHaveBeenCalledTimes(1)
+    expect(getAssetSymbolSpy).toHaveBeenCalledWith(nativeTokenAddress, provider)
+    expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(1)
+    expect(getAssetDecimalsSpy).toHaveBeenCalledWith(nativeTokenAddress, provider)
+    expect(isNativeAssetSpy).toHaveBeenCalledTimes(1)
+    expect(isNativeAssetSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(asset.adapterAddress).toStrictEqual(adapterAddress)
+    expect(asset.protocol).toStrictEqual(Protocol.EVM)
+    expect(asset.chainId).toStrictEqual(mainnet.id)
+    expect(asset.version).toStrictEqual(Version.V1)
+    expect(asset.provider).toStrictEqual(provider)
+    expect(asset.assetInfo).toStrictEqual(nativeAssetInfo)
   })
 
   it('Should create a pToken EVM asset with provider', async () => {
-    const nativeAsset = {
-      isNative: true,
-      name: 'token-name',
-      chainId: mainnet.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-    } as NativeAsset
-    const assetInfo = {
-      isNative: false,
-      name: 'pToken-name',
-      chainId: bsc.id,
-      symbol: 'pToken-symbol',
-      pTokenAddress: '0xA15BB66138824a1c7167f5E85b957d04Dd34E468',
-      decimals: 18,
-      underlyingAsset: nativeAsset,
-    } as AssetInfo
-    const provider = new pTokensEvmProvider(publicClientBscMock, walletClientBscMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
-    builder.setChainId(assetInfo.chainId)
-    builder.setAssetInfo(assetInfo)
-    builder.setProvider(provider)
-    builder.setProtocolId(Protocol.EOS)
-    builder.setVersion(Version.V2)
+    const getErc20AddressSpy = jest
+      .spyOn(utils, 'getErc20Address')
+      .mockReturnValue(new Promise((resolve) => resolve(nativeTokenAddress)))
+    const getXerc20AddressSpy = jest
+      .spyOn(utils, 'getXerc20Address')
+      .mockReturnValue(new Promise((resolve) => resolve(pTokenAddress)))
+    const getAssetNameSpy = jest
+      .spyOn(utils, 'getAssetName')
+      .mockReturnValue(new Promise((resolve) => resolve('token-name')))
+    const getAssetSymbolSpy = jest
+      .spyOn(utils, 'getAssetSymbol')
+      .mockReturnValue(new Promise((resolve) => resolve('token-symbol')))
+    const getAssetDecimalsSpy = jest
+      .spyOn(utils, 'getAssetDecimals')
+      .mockReturnValue(new Promise((resolve) => resolve(18)))
+    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+    const getLockboxAddressSpy = jest
+      .spyOn(utils, 'getLockboxAddress')
+      .mockReturnValue(new Promise((resolve) => resolve(zeroAddress)))
+
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    builder.setAdapterAddress(adapterAddress)
+    builder.setVersion(Version.V1)
     const asset = await builder.build()
-    expect(asset.adapterAddress).toStrictEqual(getters.getAdapterAddress(assetInfo.chainId))
-    expect(asset.type).toStrictEqual(BlockchainType.EVM)
-    expect(asset.assetAddress).toStrictEqual('0xA15BB66138824a1c7167f5E85b957d04Dd34E468')
-    expect(asset.chainId).toStrictEqual(assetInfo.chainId)
-    expect(asset.protocolId).toStrictEqual(Protocol.EOS)
-    expect(asset.version).toStrictEqual(Version.V2)
-    expect(asset.symbol).toStrictEqual(assetInfo.symbol)
-    expect(asset.provider).toEqual(provider)
-    expect(asset.assetInfo).toBe(assetInfo)
+    expect(getErc20AddressSpy).toHaveBeenCalledTimes(1)
+    expect(getErc20AddressSpy).toHaveBeenCalledWith(adapterAddress, provider)
+    expect(getXerc20AddressSpy).toHaveBeenCalledTimes(1)
+    expect(getXerc20AddressSpy).toHaveBeenCalledWith(adapterAddress, provider)
+    expect(getLockboxAddressSpy).toHaveBeenCalledTimes(1)
+    expect(getLockboxAddressSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(getAssetNameSpy).toHaveBeenCalledTimes(1)
+    expect(getAssetNameSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(getAssetSymbolSpy).toHaveBeenCalledTimes(1)
+    expect(getAssetSymbolSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(1)
+    expect(getAssetDecimalsSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(isNativeAssetSpy).toHaveBeenCalledTimes(1)
+    expect(isNativeAssetSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(asset.adapterAddress).toStrictEqual(adapterAddress)
+    expect(asset.protocol).toStrictEqual(Protocol.EVM)
+    expect(asset.chainId).toStrictEqual(mainnet.id)
+    expect(asset.version).toStrictEqual(Version.V1)
+    expect(asset.provider).toStrictEqual(provider)
+    expect(asset.assetInfo).toStrictEqual(pTokenAssetInfo)
   })
 
-  it('Should throw if asset and provider chainId do not match', async () => {
-    const nativeAsset = {
-      isNative: true,
-      name: 'token-name',
-      chainId: mainnet.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-    } as NativeAsset
-    const assetInfo = {
+  it('Should create a EVM asset with provider and assetInfo', async () => {
+    const getErc20AddressSpy = jest.spyOn(utils, 'getErc20Address')
+    const getXerc20AddressSpy = jest.spyOn(utils, 'getXerc20Address')
+    const getLockboxAddressSpy = jest.spyOn(utils, 'getLockboxAddress')
+    const getAssetNameSpy = jest.spyOn(utils, 'getAssetName')
+    const getAssetSymbolSpy = jest.spyOn(utils, 'getAssetSymbol')
+    const getAssetDecimalsSpy = jest.spyOn(utils, 'getAssetDecimals')
+    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+
+    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    builder.setAdapterAddress(adapterAddress)
+    builder.setVersion(Version.V1)
+    builder.setAssetInfo(pTokenAssetInfo)
+    const asset = await builder.build()
+    expect(getErc20AddressSpy).toHaveBeenCalledTimes(0)
+    expect(getXerc20AddressSpy).toHaveBeenCalledTimes(0)
+    expect(getLockboxAddressSpy).toHaveBeenCalledTimes(0)
+    expect(getAssetNameSpy).toHaveBeenCalledTimes(0)
+    expect(getAssetSymbolSpy).toHaveBeenCalledTimes(0)
+    expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(0)
+    expect(isNativeAssetSpy).toHaveBeenCalledTimes(0)
+    expect(asset.adapterAddress).toStrictEqual(adapterAddress)
+    expect(asset.protocol).toStrictEqual(Protocol.EVM)
+    expect(asset.chainId).toStrictEqual(mainnet.id)
+    expect(asset.version).toStrictEqual(Version.V1)
+    expect(asset.provider).toStrictEqual(provider)
+    expect(asset.assetInfo).toStrictEqual(pTokenAssetInfo)
+  })
+
+  it('Should create a EVM asset with provider and assetInfo', async () => {
+    const assetInfo: AssetInfo = {
       isNative: false,
-      name: 'pToken-name',
-      chainId: bsc.id,
-      symbol: 'pToken-symbol',
-      pTokenAddress: '0xA15BB66138824a1c7167f5E85b957d04Dd34E468',
+      nativeChain: nativeChain,
+      chain: chain,
+      name: 'token-name',
+      symbol: 'token-symbol',
       decimals: 18,
-      underlyingAsset: nativeAsset,
-    } as AssetInfo
+      address: pTokenAddress,
+      pTokenAddress: pTokenAddress,
+      nativeTokenAddress: nativeTokenAddress,
+    }
+
+    const getErc20AddressSpy = jest.spyOn(utils, 'getErc20Address')
+    const getXerc20AddressSpy = jest.spyOn(utils, 'getXerc20Address')
+    const getLockboxAddressSpy = jest.spyOn(utils, 'getLockboxAddress')
+    const getAssetNameSpy = jest.spyOn(utils, 'getAssetName')
+    const getAssetSymbolSpy = jest.spyOn(utils, 'getAssetSymbol')
+    const getAssetDecimalsSpy = jest.spyOn(utils, 'getAssetDecimals')
+    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
-    builder.setChainId(assetInfo.chainId)
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    builder.setAdapterAddress(adapterAddress)
+    builder.setVersion(Version.V1)
     builder.setAssetInfo(assetInfo)
-    builder.setProvider(provider)
-    builder.setProtocolId(Protocol.EOS)
-    builder.setVersion(Version.V2)
-    try {
-      await builder.build()
-      fail()
-    } catch (_err) {
-      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('Provider chainId: 1 do not match with assetInfo chainId: 56')
-    }
+    const asset = await builder.build()
+    expect(getErc20AddressSpy).toHaveBeenCalledTimes(0)
+    expect(getXerc20AddressSpy).toHaveBeenCalledTimes(0)
+    expect(getLockboxAddressSpy).toHaveBeenCalledTimes(0)
+    expect(getAssetNameSpy).toHaveBeenCalledTimes(0)
+    expect(getAssetSymbolSpy).toHaveBeenCalledTimes(0)
+    expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(0)
+    expect(isNativeAssetSpy).toHaveBeenCalledTimes(0)
+    expect(asset.adapterAddress).toStrictEqual(adapterAddress)
+    expect(asset.protocol).toStrictEqual(Protocol.EVM)
+    expect(asset.chainId).toStrictEqual(mainnet.id)
+    expect(asset.version).toStrictEqual(Version.V1)
+    expect(asset.provider).toStrictEqual(provider)
+    expect(asset.assetInfo).toStrictEqual(assetInfo)
   })
 
-  it('Should not create an EVM asset without a valid pTokenAddress', async () => {
+  it('Should throw if no provider is found', async () => {
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const assetInfo = {
-      isNative: true,
-      name: 'token-name',
-      chainId: mainnet.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-      pTokenAddress: 'invalid-address',
-    } as AssetInfo
-    const builder = new pTokensEvmAssetBuilder(provider)
-    try {
-      builder.setChainId(assetInfo.chainId)
-      builder.setAssetInfo(assetInfo)
-      builder.setVersion(Version.V1)
-      builder.setProtocolId(Protocol.EVM)
-      await builder.build()
-      fail()
-    } catch (_err) {
-      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('pTokenAddress invalid-address must be a valid address')
-    }
-  })
-
-  it('Should not create an EVM asset without a supported chainId', async () => {
-    const provider = new pTokensEvmProvider(publicClientPolygonMock, walletClientPolygonMock)
-    const assetInfo = {
-      isNative: true,
-      name: 'token-name',
-      chainId: polygon.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-      pTokenAddress: 'invalid-address',
-    } as AssetInfo
-    const builder = new pTokensEvmAssetBuilder(provider)
-    try {
-      builder.setChainId(assetInfo.chainId)
-      builder.setAssetInfo(assetInfo)
-      builder.setVersion(Version.V1)
-      builder.setProtocolId(Protocol.EVM)
-      await builder.build()
-      fail()
-    } catch (_err) {
-      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('Adapter address for 137 has not been found. Is this chain supported?')
-    }
-  })
-
-  it('Should not create an EVM asset without chainId', async () => {
-    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    builder.setAdapterAddress(adapterAddress)
+    builder.setVersion(Version.V1)
+    builder['_provider'] = undefined as unknown as pTokensEvmProvider
     try {
       await builder.build()
       fail()
     } catch (_err) {
       if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('Missing chain ID')
-    }
-  })
-
-  it('Should not create an EVM asset without asset info', async () => {
-    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
-    try {
-      builder.setChainId(mainnet.id)
-      await builder.build()
-      fail()
-    } catch (_err) {
-      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('Missing asset info')
-    }
-  })
-
-  it('Should not create an EVM asset without version', async () => {
-    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
-    const assetInfo = {
-      isNative: true,
-      name: 'token-name',
-      chainId: mainnet.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-      pTokenAddress: 'invalid-address',
-    } as AssetInfo
-    try {
-      builder.setChainId(mainnet.id)
-      builder.setAssetInfo(assetInfo)
-      await builder.build()
-      fail()
-    } catch (_err) {
-      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('Missing version')
-    }
-  })
-
-  it('Should not create an EVM asset without protocol', async () => {
-    const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder(provider)
-    const assetInfo = {
-      isNative: true,
-      name: 'token-name',
-      chainId: mainnet.id,
-      symbol: 'token-symbol',
-      tokenAddress: '0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35',
-      decimals: 18,
-      pTokenAddress: 'invalid-address',
-    } as AssetInfo
-    try {
-      builder.setChainId(mainnet.id)
-      builder.setAssetInfo(assetInfo)
-      builder.setVersion(Version.V1)
-      await builder.build()
-      fail()
-    } catch (_err) {
-      if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-      expect(_err.message).toStrictEqual('Missing protocol ID')
+      expect(_err.message).toStrictEqual('Provider not found')
     }
   })
 })
