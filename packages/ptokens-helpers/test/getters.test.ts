@@ -1,23 +1,33 @@
-import { AdapterAddress, Chain } from 'ptokens-constants'
+import { Chain } from 'ptokens-constants'
 
-import { getAdapterAddress } from '../src/getters/index'
+import { getChain } from '../src/getters'
 
-describe('getAdapterAddress', () => {
-  it('should return the correct adapter address for a valid chain id number', () => {
-    const chainId = 1
-    const result = getAdapterAddress(chainId)
-    expect(result).toBe(AdapterAddress.get(Chain.Mainnet))
+describe('getChain', () => {
+  // Valid inputs as strings
+  it('should return Mainnet for string "0x1"', () => {
+    expect(getChain('0x1')).toBe(Chain.EthereumMainnet)
   })
 
-  it('should return the correct adapter address for a valid chain id string', () => {
-    const chainId = '0x1'
-    const result = getAdapterAddress(chainId)
-    expect(result).toBe(AdapterAddress.get(Chain.Mainnet))
+  it('should return Bsc for string "0x38"', () => {
+    expect(getChain('0x38')).toBe(Chain.BscMainnet)
   })
 
-  it('should be undefinded for an invalid chain id', () => {
-    const invalidChainId = 'invalid'
-    const result = getAdapterAddress(invalidChainId)
-    expect(result).toBe(undefined)
+  // Valid inputs as numbers
+  it('should return Gnosis for number 0x64', () => {
+    expect(getChain(0x64)).toBe(Chain.GnosisMainnet)
+  })
+
+  it('should return Polygon for number 0x89', () => {
+    expect(getChain(0x89)).toBe(Chain.PolygonMainnet)
+  })
+
+  // Invalid input: non-existing chain ID as string
+  it('should throw an error for invalid string chain ID', () => {
+    expect(() => getChain('0x999')).toThrow('Invalid chain ID: 0x999')
+  })
+
+  // Invalid input: non-existing chain ID as number
+  it('should throw an error for invalid number chain ID', () => {
+    expect(() => getChain(0x999)).toThrow('Invalid chain ID: 0x999')
   })
 })
