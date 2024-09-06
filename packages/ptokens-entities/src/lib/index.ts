@@ -1,36 +1,24 @@
-type pTokenAsset = {
-  isNative: false
+import { Chain } from 'ptokens-constants'
+
+type AssetInfo = {
+  isNative: boolean
+  /** The chain ID of the native Asset's blockchain. */
+  nativeChain: Chain
+  /** The chain ID of the asset's blockchain. */
+  chain: Chain
   /** The name of the asset. */
   name: string
-  /** The chain ID of the asset's blockchain. */
-  chainId: number
   /** Asset symbol */
   symbol: string
-  /** pToken address. */
-  pTokenAddress: string
   /** Token's decimals. */
   decimals: number
-  /** Underlying asset information */
-  underlyingAsset: NativeAsset
-}
-
-type NativeAsset = {
-  isNative: true
-  /** The name of the asset. */
-  name: string
-  /** The chain ID of the asset's blockchain. */
-  chainId: number
-  /** Asset symbol */
-  symbol: string
   /** Token smart contract address. */
-  tokenAddress: string
-  /** Token's decimals. */
-  decimals: number
+  address: string
   /** pNetwork address. */
-  pTokenAddress?: string
+  pTokenAddress: string
+  /** Token smart contract address. */
+  nativeTokenAddress: string
 }
-
-type AssetInfo = NativeAsset | pTokenAsset
 
 type Operation = {
   blockId: string
@@ -56,4 +44,4 @@ type Metadata = {
   signature: string
 }
 
-export { Metadata, Operation, Context, pTokenAsset, NativeAsset, AssetInfo }
+export { Metadata, Operation, Context, AssetInfo }

@@ -1,48 +1,28 @@
-import { BlockchainType, Protocol, Version } from 'ptokens-constants'
-import { validators, getters } from 'ptokens-helpers'
+import { Chain, Protocol, Version } from 'ptokens-constants'
+import { validators } from 'ptokens-helpers'
 
 import { AssetInfo } from './lib'
 import { pTokensAsset } from './ptokens-asset'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
+export type pTokensAssetBuilderParams = {
+  provider: pTokensAssetProvider
+  assetNativeChain: Chain
+}
+
 export abstract class pTokensAssetBuilder {
-  protected _decimals: number
-  protected _chainId: number
   protected _assetInfo: AssetInfo
-  private _type: BlockchainType
   protected _adapterAddress: string
   protected _version: Version
-  protected _protocolId: Protocol
+  protected _protocol: Protocol
 
   /**
    * Create and initialize a pTokensAssetBuilder object.
-   * @param _type - A type indicating the builder nature and used for validation.
+   * @param _protocol - A type indicating the builder nature and used for validation.
    */
-  constructor(_type: BlockchainType) {
-    this._type = _type
+  constructor(_protocol: Protocol) {
+    this._protocol = _protocol
   }
-
-  /**
-   * Set the blockchain chain ID for the token.
-   * @param _chainId - The chain ID.
-   * @returns The same builder. This allows methods chaining.
-   */
-  setChainId(_chainId: number) {
-    this._chainId = _chainId
-    return this
-  }
-
-  /**
-   * Set the number of decimals for the token.
-   * @param _decimals - The number of decimals.
-   * @returns The same builder. This allows methods chaining.
-   */
-  setDecimals(_decimals: number) {
-    this._decimals = _decimals
-    return this
-  }
-
-  abstract setProvider(_provider: pTokensAssetProvider): this
 
   /**
    * Set the version for the token.
@@ -51,16 +31,6 @@ export abstract class pTokensAssetBuilder {
    */
   setVersion(_version: Version) {
     this._version = _version
-    return this
-  }
-
-  /**
-   * Set the protocolId for the token.
-   * @param _protocolId - The token protocolId.
-   * @returns The same builder. This allows methods chaining.
-   */
-  setProtocolId(_protocolId: Protocol) {
-    this._protocolId = _protocolId
     return this
   }
 
@@ -85,19 +55,11 @@ export abstract class pTokensAssetBuilder {
   }
 
   private validate() {
-    if (!this._chainId) throw new Error('Missing chain ID')
-    if (!this._assetInfo) throw new Error('Missing asset info')
-    if (!this._adapterAddress) {
-      const adapterAddress = getters.getAdapterAddress(this._chainId)
-      if (!adapterAddress)
-        throw new Error(`Adapter address for ${this._chainId} has not been found. Is this chain supported?`)
-      this._adapterAddress = adapterAddress
-    }
+    if (!this._protocol) throw new Error('Missing protocol')
+    if (!this._adapterAddress) throw new Error('Adapter address for not provided')
     if (!this._version) throw new Error('Missing version')
-    if (!this._protocolId) throw new Error('Missing protocol ID')
-    if (!validators.isValidAddressByChainId(this._adapterAddress, this._type))
+    if (!validators.isValidAddressByChainId(this._adapterAddress, this._protocol))
       throw new Error('Invalid adapter address')
-    if (this._decimals !== undefined) this._assetInfo.decimals = this._decimals
   }
 
   /**

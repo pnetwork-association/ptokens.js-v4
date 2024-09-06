@@ -1,5 +1,5 @@
 import PromiEvent from 'promievent'
-import { BlockchainType, Protocol, Version } from 'ptokens-constants'
+import { Chain, Protocol, Version } from 'ptokens-constants'
 
 import { Operation, Metadata, AssetInfo } from './lib'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
@@ -8,8 +8,7 @@ export type pTokenAssetConfig = {
   /** An AssetInfo object containing asset technical details. */
   assetInfo: AssetInfo
   adapterAddress: string
-  protocolId?: Protocol
-  version?: Version
+  version: Version
 }
 
 export type NativeToXBasisPoints = {
@@ -53,33 +52,29 @@ export type SettleResult = {
 export abstract class pTokensAsset {
   private _adapterAddress: string
   private _assetInfo: AssetInfo
-  private _type: BlockchainType
+  private _protocol: Protocol
   private _version: number
-  private _protocolId: number
 
   /**
    * Create and initialize a pTokensAsset object. pTokensAsset objects shall be created with a pTokensAssetBuilder instance.
    */
-  constructor(_config: pTokenAssetConfig, _type: BlockchainType) {
-    if (!_config.assetInfo) throw new Error('Missing asset info')
+  constructor(_config: pTokenAssetConfig, _protocol: Protocol) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
     if (!_config.version) throw new Error('Missing asset version')
-    if (!_config.protocolId) throw new Error('Missing asset protocolId')
-    if (_config.assetInfo.isNative === false) {
-      if (!_config.assetInfo.pTokenAddress) throw new Error('pTokenAddress is mandatory if token is not native')
-      if (
-        _config.assetInfo.underlyingAsset.pTokenAddress &&
-        _config.assetInfo.underlyingAsset.pTokenAddress !== _config.assetInfo.pTokenAddress
+    if (_config.assetInfo.isNative && _config.assetInfo.chain !== _config.assetInfo.nativeChain)
+      throw new Error(
+        `the asset is native: chain ${_config.assetInfo.chain} and nativeChain ${_config.assetInfo.nativeChain} must be equal`,
       )
-        throw new Error('pToken address does not match underlying asset pToken address')
-      if (_config.assetInfo.pTokenAddress === _config.assetInfo.underlyingAsset.tokenAddress)
-        throw new Error(
-          `pToken cannot be underlying of itself: ${_config.assetInfo.pTokenAddress} must be different from ${_config.assetInfo.underlyingAsset.tokenAddress}`,
-        )
-    }
+    if (!_config.assetInfo.isNative && _config.assetInfo.address !== _config.assetInfo.pTokenAddress)
+      throw new Error(
+        `the asset is not native: pTokenAddress ${_config.assetInfo.pTokenAddress} and address ${_config.assetInfo.address} must be equal`,
+      )
+    if (_config.assetInfo.isNative && _config.assetInfo.address !== _config.assetInfo.nativeTokenAddress)
+      throw new Error(
+        `the asset is native: nativeTokenAddress ${_config.assetInfo.nativeTokenAddress} and address ${_config.assetInfo.address} must be equal`,
+      )
     this._version = _config.version
-    this._protocolId = _config.protocolId
-    this._type = _type
+    this._protocol = _protocol
     this._assetInfo = _config.assetInfo
     this._adapterAddress = _config.adapterAddress
   }
@@ -89,19 +84,14 @@ export abstract class pTokensAsset {
     return this._adapterAddress
   }
 
-  /** Return the token's symbol. */
-  get symbol(): string {
-    return this.assetInfo.symbol
+  /** Return technical details related to the token. */
+  get assetInfo(): AssetInfo {
+    return this._assetInfo
   }
 
-  /** Return the token's blockchain type. */
-  get type(): BlockchainType {
-    return this._type
-  }
-
-  /** Return the token's protocolId. */
-  get protocolId(): number {
-    return this._protocolId
+  /** Return the token's blockchain protocol. */
+  get protocol(): Protocol {
+    return this._protocol
   }
 
   /** Return the token's version. */
@@ -111,23 +101,7 @@ export abstract class pTokensAsset {
 
   /** Return the chain ID of the token. */
   get chainId(): number {
-    return this._assetInfo.chainId
-  }
-
-  /** Return token smart contract address. */
-  get assetAddress(): string {
-    if (this._assetInfo.isNative) return this._assetInfo.tokenAddress
-    else return this._assetInfo.pTokenAddress
-  }
-
-  /** Return technical details related to the token. */
-  get assetInfo(): AssetInfo {
-    return this._assetInfo
-  }
-
-  /** Return if the token is native or pToken. */
-  get isNative(): boolean {
-    return this._assetInfo.isNative
+    return parseInt(this._assetInfo.chain)
   }
 
   /** Return the pTokensAssetProvider eventually assigned */
@@ -137,11 +111,10 @@ export abstract class pTokensAsset {
     _amount: bigint,
     _destinationChainId: string,
     _recipient: string,
-    _fees?: bigint,
     _userData?: string,
   ): PromiEvent<SwapResult>
 
   protected abstract getProofMetadata(_eventId: string): Promise<Metadata>
 
-  protected abstract settle<T>(_operation: Operation, _swapLog: T, _metadata: Metadata): PromiEvent<any>
+  protected abstract settle<T>(_swapLog: T, _originChain: Chain, _metadata: Metadata): PromiEvent<any>
 }
