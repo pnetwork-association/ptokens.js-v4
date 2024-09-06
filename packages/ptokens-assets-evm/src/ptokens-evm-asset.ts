@@ -1,8 +1,9 @@
 import axios from 'axios'
 import PromiEvent from 'promievent'
-import { BlockchainType, Protocol, Version } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
-import { concat, Log, numberToHex, TransactionReceipt, WalletClient } from 'viem'
+import { Chain, Protocol, Version, chainToProtocolMap } from 'ptokens-constants'
+import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata } from 'ptokens-entities'
+import { validators } from 'ptokens-helpers'
+import { concat, isAddress, Log, numberToHex, TransactionReceipt, WalletClient } from 'viem'
 
 import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
 import {
@@ -31,14 +32,18 @@ export class pTokensEvmAsset extends pTokensAsset {
    * Create and initialize a pTokensEvmAsset object. pTokensEvmAsset objects shall be created with a pTokensEvmAssetBuilder instance.
    */
   constructor(config: pTokenEvmAssetConfig) {
-    if (!config.assetInfo.decimals) throw new Error('Missing decimals')
+    if (!config.assetInfo) throw new Error('Missing assetInfo')
+    if (!isAddress(config.assetInfo.nativeTokenAddress))
+      throw new Error(`nativeTokenAddress ${config.assetInfo.nativeTokenAddress} must be a valid address`)
+    if (!isAddress(config.assetInfo.pTokenAddress))
+      throw new Error(`pTokenAddress ${config.assetInfo.pTokenAddress} must be a valid address`)
     if (!config.version) config.version = Version.V1
-    if (!config.protocolId) config.protocolId = Protocol.EVM
-    if (config.assetInfo.chainId !== config.provider.chainId)
+    if (parseInt(config.assetInfo.chain) !== config.provider.chainId)
       throw new Error(
-        `Provider chainId: ${config.provider.chainId} do not match with assetInfo chainId: ${config.assetInfo.chainId}`,
+        `Provider chainId: ${config.provider.chainId} do not match with assetInfo chainId: ${parseInt(config.assetInfo.chain)}`,
       )
-    super(config, BlockchainType.EVM)
+
+    super(config, Protocol.EVM)
     this._provider = config.provider
   }
 
@@ -58,32 +63,22 @@ export class pTokensEvmAsset extends pTokensAsset {
 
   getContext(): `0x${string}` {
     const version = numberToHex(this.version, { size: 1 })
-    const protocolId = numberToHex(this.protocolId, { size: 1 })
+    const protocolId = numberToHex(this.protocol, { size: 1 })
     const chainId = numberToHex(this.chainId, { size: 32 })
     return concat([version, protocolId, chainId])
   }
 
   /* eslint-disable @typescript-eslint/no-unused-vars */
-  protected swap(
-    _amount: bigint,
-    _recipient: string,
-    _destinationChainId: string,
-    _fees = BigInt(0),
-    _userData = '0x',
-  ): PromiEvent<SwapResult> {
+  public swap(_amount: bigint, _recipient: string, _destinationChain: Chain, _userData = '0x'): PromiEvent<SwapResult> {
     /* eslint-enable @typescript-eslint/no-unused-vars */
     const promi = new PromiEvent<SwapResult>(
       (resolve, reject) =>
         (async () => {
           try {
+            if (!validators.isValidAddressByChainId(_recipient, chainToProtocolMap.get(_destinationChain) as Protocol))
+              return reject(new Error(`${_recipient} is not a valid address for chain ${_destinationChain}`))
             if (!this._provider) return reject(new Error('Missing provider'))
-            const args = [
-              this.assetAddress,
-              _amount,
-              _destinationChainId,
-              _recipient, // destinationAccount
-              _userData,
-            ]
+            const args = [this.assetInfo.address, _amount, _destinationChain, _recipient, _userData]
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
@@ -136,14 +131,15 @@ export class pTokensEvmAsset extends pTokensAsset {
     }
   }
 
-  public settle<T = Log>(_operation: Operation, _swapLog: T, _metadata: Metadata): PromiEvent<any> {
+  public settle<T = Log>(_swapLog: T, _originChain: Chain, _metadata: Metadata): PromiEvent<any> {
     const promi = new PromiEvent<SettleResult>(
       (resolve, reject) =>
         (async () => {
           try {
             if (!this._provider) return reject(new Error('Missing provider'))
+            const operation = getOperationFromLog(_swapLog as Log, parseInt(_originChain))
             const preimage = getEventPreImage(_swapLog as Log, this.getContext())
-            const args = [serializeOperation(_operation), [preimage, _metadata.signature]]
+            const args = [serializeOperation(operation), [preimage, _metadata.signature]]
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
