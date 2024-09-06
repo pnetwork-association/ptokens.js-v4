@@ -1,17 +1,14 @@
 import { validate } from 'multicoin-address-validator'
-import { BlockchainType } from 'ptokens-constants'
+import { Protocol } from 'ptokens-constants'
 
-const validatorFunction =
-  (_blockchain: string, _network = 'prod') =>
-  (_address: string) =>
-    validate(_address, _blockchain, _network)
+// https://docs.eosnetwork.com/docs/latest/core-concepts/accounts/#regex-validation
+const isValidEOSAddress = (_address: string) => {
+  const eosAccountRegex = /(^[a-z1-5.]{1,11}[a-z1-5]$)|(^[a-z1-5.]{12}[a-j1-5]$)/
+  return eosAccountRegex.test(_address)
+}
 
-export const chainTypeToAddressValidatorMap = new Map<BlockchainType, (_address: string) => boolean>([
-  [BlockchainType.EVM, validatorFunction('eth')],
-])
-
-export function isValidAddressByChainId(_address: string, _chaintype: BlockchainType) {
-  const validator = chainTypeToAddressValidatorMap.get(_chaintype)
-  if (validator) return validator(_address)
+export function isValidAddressByChainId(_address: string, _protocol: Protocol) {
+  if (_protocol == Protocol.EOS) return isValidEOSAddress(_address)
+  if (_protocol == Protocol.EVM) return validate(_address, 'eth', 'prod')
   throw new Error('Missing address validator')
 }
