@@ -1,6 +1,6 @@
 import PromiEvent from 'promievent'
 import { pTokensAssetProvider } from 'ptokens-entities'
-import { stringUtils, getters } from 'ptokens-helpers'
+import { stringUtils } from 'ptokens-helpers'
 import {
   Abi,
   PublicClient,
@@ -11,6 +11,7 @@ import {
   http,
   createWalletClient,
   AbiEvent,
+  isAddress,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 
@@ -283,15 +284,13 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
     )
   }
 
-  getSwaps<T = Log[]>(_from: bigint, _chunkSize = 1000n) {
+  getSwaps<T = Log[]>(_adapterAddress: string, _fromBlock: bigint, _chunkSize = 1000n) {
     const promi = new PromiEvent<T>(
       (resolve, reject) =>
         (async () => {
           try {
-            const chainId = this._publicClient.chain?.id
-            const adapterAddress = getters.getAdapterAddress(chainId as number)
-            if (!adapterAddress) {
-              throw new Error(`Adapter address for ${chainId} not found`)
+            if (!isAddress(_adapterAddress)) {
+              throw new Error(`Adapter address: ${_adapterAddress} is not valid`)
             }
             const [userAddress] = await this._walletClient.getAddresses()
             if (!userAddress) throw new Error('No user account found')
@@ -299,10 +298,10 @@ export class pTokensEvmProvider implements pTokensAssetProvider {
             const res: Log[] = []
             await this.getEvents({
               fromAddress: userAddress,
-              contractAddress: stringUtils.addHexPrefix(adapterAddress),
+              contractAddress: _adapterAddress,
               contractAbi: PNetworkAdapterAbi,
               eventName: EVENT_NAMES.SWAP,
-              fromBlock: _from,
+              fromBlock: _fromBlock,
               toBlock: await this._publicClient.getBlockNumber(),
               onLog: (_log: Log) => {
                 res.push(_log)
