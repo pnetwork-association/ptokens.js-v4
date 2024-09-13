@@ -22,6 +22,7 @@ import {
 } from 'viem'
 
 import pNetworkAdapterAbi from '../abi/PNetworkAdapterAbi'
+import xerc20Abi from '../abi/xerc20Abi'
 import { pTokensEvmProvider } from '../ptokens-evm-provider'
 
 export enum EVENT_NAMES {
@@ -193,7 +194,7 @@ export const getLockboxAddress = async (
     return await _evmProvider.makeContractCall<`0x${string}`, []>({
       contractAddress: _xerc20Address,
       method: 'lockbox',
-      abi: pNetworkAdapterAbi,
+      abi: xerc20Abi,
     })
   } catch (_err) {
     if (!(_err instanceof Error)) throw new Error('Invalid Error type')
