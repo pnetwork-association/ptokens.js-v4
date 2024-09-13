@@ -42,7 +42,14 @@ export class pTokensEvmAsset extends pTokensAsset {
       throw new Error(
         `Provider chainId: ${config.provider.chainId} do not match with assetInfo chainId: ${parseInt(config.assetInfo.chain)}`,
       )
-
+    if (config.assetInfo.isNative && config.assetInfo.chain !== config.assetInfo.nativeChain)
+      throw new Error(
+        `Asset is native: its chain: ${config.assetInfo.chain} must match its native asset chain: ${config.assetInfo.nativeChain}`,
+      )
+    if (!config.assetInfo.isNative && config.assetInfo.chain === config.assetInfo.nativeChain)
+      throw new Error(
+        `Asset is not native: its chain: ${config.assetInfo.chain} must not match its native asset chain: ${config.assetInfo.nativeChain}`,
+      )
     super(config, Protocol.EVM)
     this._provider = config.provider
   }
