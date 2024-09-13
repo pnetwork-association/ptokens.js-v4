@@ -107,14 +107,14 @@ export abstract class pTokensAsset {
   /** Return the pTokensAssetProvider eventually assigned */
   abstract get provider(): pTokensAssetProvider
 
-  protected abstract swap(
+  public abstract swap(
     _amount: bigint,
     _destinationChainId: string,
     _recipient: string,
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  protected abstract getProofMetadata(_eventId: string): Promise<Metadata>
+  public abstract getProofMetadata(_eventId: string): Promise<Metadata>
 
-  protected abstract settle<T>(_swapLog: T, _originChain: Chain, _metadata: Metadata): PromiEvent<any>
+  public abstract settle<T>(_swapLog: T, _originChain: Chain, _metadata: Metadata): PromiEvent<any>
 }
