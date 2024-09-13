@@ -3,17 +3,72 @@ export default [
     type: 'constructor',
     inputs: [
       {
-        name: '_xerc20',
+        name: 'xerc20_',
         type: 'address',
         internalType: 'address',
       },
       {
-        name: '_erc20',
+        name: 'erc20_',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'feesManager_',
+        type: 'address',
+        internalType: 'address',
+      },
+      {
+        name: 'pam_',
         type: 'address',
         internalType: 'address',
       },
     ],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'FEE_BASIS_POINTS',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'FEE_DIVISOR',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'calculateFee',
+    inputs: [
+      {
+        name: 'amount',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -30,7 +85,59 @@ export default [
   },
   {
     type: 'function',
+    name: 'feesManager',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'minFee',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'nonce',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'uint256',
+        internalType: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'owner',
+    inputs: [],
+    outputs: [
+      {
+        name: '',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'pam',
     inputs: [],
     outputs: [
       {
@@ -64,6 +171,32 @@ export default [
     type: 'function',
     name: 'renounceOwnership',
     inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setFeesManager',
+    inputs: [
+      {
+        name: 'feesManager_',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'setPAM',
+    inputs: [
+      {
+        name: 'pam_',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -210,6 +343,19 @@ export default [
   },
   {
     type: 'event',
+    name: 'FeesManagerChanged',
+    inputs: [
+      {
+        name: 'newAddress',
+        type: 'address',
+        indexed: false,
+        internalType: 'address',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
     name: 'OwnershipTransferred',
     inputs: [
       {
@@ -222,6 +368,19 @@ export default [
         name: 'newOwner',
         type: 'address',
         indexed: true,
+        internalType: 'address',
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'PAMChanged',
+    inputs: [
+      {
+        name: 'pamAddress',
+        type: 'address',
+        indexed: false,
         internalType: 'address',
       },
     ],
@@ -285,76 +444,12 @@ export default [
   },
   {
     type: 'error',
-    name: 'InsufficientAmount',
-    inputs: [
-      {
-        name: 'amount',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-      {
-        name: 'fees',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-    ],
-  },
-  {
-    type: 'error',
     name: 'InvalidAmount',
     inputs: [],
   },
   {
     type: 'error',
-    name: 'InvalidDestinationChainId',
-    inputs: [
-      {
-        name: 'destinationChainId',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-    ],
-  },
-  {
-    type: 'error',
-    name: 'InvalidEventContentLength',
-    inputs: [
-      {
-        name: 'length',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-    ],
-  },
-  {
-    type: 'error',
-    name: 'InvalidFeesManager',
-    inputs: [],
-  },
-  {
-    type: 'error',
-    name: 'InvalidMessageId',
-    inputs: [
-      {
-        name: 'actual',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-      {
-        name: 'expected',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-    ],
-  },
-  {
-    type: 'error',
     name: 'InvalidOperation',
-    inputs: [],
-  },
-  {
-    type: 'error',
-    name: 'InvalidSender',
     inputs: [],
   },
   {
@@ -368,6 +463,17 @@ export default [
     inputs: [
       {
         name: 'token',
+        type: 'address',
+        internalType: 'address',
+      },
+    ],
+  },
+  {
+    type: 'error',
+    name: 'NotAContract',
+    inputs: [
+      {
+        name: 'addr',
         type: 'address',
         internalType: 'address',
       },
@@ -402,11 +508,6 @@ export default [
   },
   {
     type: 'error',
-    name: 'RLPInputTooLong',
-    inputs: [],
-  },
-  {
-    type: 'error',
     name: 'ReentrancyGuardReentrantCall',
     inputs: [],
   },
@@ -429,39 +530,6 @@ export default [
         name: 'eventId',
         type: 'bytes32',
         internalType: 'bytes32',
-      },
-    ],
-  },
-  {
-    type: 'error',
-    name: 'UnexpectedEventTopic',
-    inputs: [
-      {
-        name: 'topic',
-        type: 'bytes32',
-        internalType: 'bytes32',
-      },
-    ],
-  },
-  {
-    type: 'error',
-    name: 'UnsupportedChainId',
-    inputs: [
-      {
-        name: 'chainId',
-        type: 'uint256',
-        internalType: 'uint256',
-      },
-    ],
-  },
-  {
-    type: 'error',
-    name: 'UnsupportedProtocolId',
-    inputs: [
-      {
-        name: 'protocolId',
-        type: 'bytes1',
-        internalType: 'bytes1',
       },
     ],
   },
