@@ -63,15 +63,15 @@ export abstract class pTokensAsset {
     if (!_config.version) throw new Error('Missing asset version')
     if (_config.assetInfo.isNative && _config.assetInfo.chain !== _config.assetInfo.nativeChain)
       throw new Error(
-        `the asset is native: chain ${_config.assetInfo.chain} and nativeChain ${_config.assetInfo.nativeChain} must be equal`,
+        `Asset is native: chain ${_config.assetInfo.chain} and nativeChain ${_config.assetInfo.nativeChain} must be equal`,
       )
     if (!_config.assetInfo.isNative && _config.assetInfo.address !== _config.assetInfo.pTokenAddress)
       throw new Error(
-        `the asset is not native: pTokenAddress ${_config.assetInfo.pTokenAddress} and address ${_config.assetInfo.address} must be equal`,
+        `Asset is not native: pTokenAddress ${_config.assetInfo.pTokenAddress} and address ${_config.assetInfo.address} must be equal`,
       )
     if (_config.assetInfo.isNative && _config.assetInfo.address !== _config.assetInfo.nativeTokenAddress)
       throw new Error(
-        `the asset is native: nativeTokenAddress ${_config.assetInfo.nativeTokenAddress} and address ${_config.assetInfo.address} must be equal`,
+        `Asset is native: nativeTokenAddress ${_config.assetInfo.nativeTokenAddress} and address ${_config.assetInfo.address} must be equal`,
       )
     this._version = _config.version
     this._protocol = _protocol

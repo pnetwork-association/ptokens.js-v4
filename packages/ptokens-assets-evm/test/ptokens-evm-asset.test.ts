@@ -132,7 +132,7 @@ describe('EVM asset', () => {
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
-        expect(_err.message).toEqual('the asset is native: chain 0x1 and nativeChain 0x89 must be equal')
+        expect(_err.message).toEqual('Asset is native: its chain: 0x1 must match its native asset chain: 0x89')
       }
     })
 
@@ -208,7 +208,7 @@ describe('EVM asset', () => {
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
         expect(_err.message).toEqual(
-          `the asset is not native: pTokenAddress ${brokenpTokenAssetInfo.pTokenAddress} and address ${brokenpTokenAssetInfo.address} must be equal`,
+          `Asset is not native: pTokenAddress ${brokenpTokenAssetInfo.pTokenAddress} and address ${brokenpTokenAssetInfo.address} must be equal`,
         )
       }
     })
@@ -225,7 +225,7 @@ describe('EVM asset', () => {
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
         expect(_err.message).toEqual(
-          `the asset is native: nativeTokenAddress ${brokenNativeAssetInfo.nativeTokenAddress} and address ${brokenNativeAssetInfo.address} must be equal`,
+          `Asset is native: nativeTokenAddress ${brokenNativeAssetInfo.nativeTokenAddress} and address ${brokenNativeAssetInfo.address} must be equal`,
         )
       }
     })
