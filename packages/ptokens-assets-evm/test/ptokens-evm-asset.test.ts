@@ -36,7 +36,7 @@ const nativeAssetInfo: AssetInfo = {
 }
 const pTokenAssetInfo: AssetInfo = {
   isNative: false,
-  nativeChain: nativeChain,
+  nativeChain: Chain.GnosisMainnet,
   chain: chain,
   name: 'token-name',
   symbol: 'token-symbol',
@@ -58,7 +58,7 @@ const brokenNativeAssetInfo: AssetInfo = {
 }
 const brokenpTokenAssetInfo: AssetInfo = {
   isNative: false,
-  nativeChain: nativeChain,
+  nativeChain: Chain.GnosisMainnet,
   chain: chain,
   name: 'token-name',
   symbol: 'token-symbol',

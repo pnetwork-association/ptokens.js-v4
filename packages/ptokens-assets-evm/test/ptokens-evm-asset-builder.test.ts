@@ -26,7 +26,7 @@ const nativeAssetInfo: AssetInfo = {
 }
 const pTokenAssetInfo: AssetInfo = {
   isNative: false,
-  nativeChain: nativeChain,
+  nativeChain: Chain.GnosisMainnet,
   chain: chain,
   name: 'token-name',
   symbol: 'token-symbol',
@@ -111,7 +111,7 @@ describe('EVM asset', () => {
       .mockReturnValue(new Promise((resolve) => resolve(zeroAddress)))
 
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: Chain.GnosisMainnet })
     builder.setAdapterAddress(adapterAddress)
     builder.setVersion(Version.V1)
     const asset = await builder.build()
@@ -170,7 +170,7 @@ describe('EVM asset', () => {
   it('Should create a EVM asset with provider and assetInfo', async () => {
     const assetInfo: AssetInfo = {
       isNative: false,
-      nativeChain: nativeChain,
+      nativeChain: Chain.GnosisMainnet,
       chain: chain,
       name: 'token-name',
       symbol: 'token-symbol',
@@ -189,7 +189,7 @@ describe('EVM asset', () => {
     const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
 
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
-    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
+    const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: Chain.GnosisMainnet })
     builder.setAdapterAddress(adapterAddress)
     builder.setVersion(Version.V1)
     builder.setAssetInfo(assetInfo)
