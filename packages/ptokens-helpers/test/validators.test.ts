@@ -37,7 +37,7 @@ describe('isValidAddressByChainId', () => {
 
   const addressesToCheck = new Map<Protocol, { address: string; expected: boolean }[]>([
     [Protocol.EVM, evmAddresses],
-    [Protocol.EOS, eosAddresses],
+    [Protocol.ANTELOPE, eosAddresses],
   ])
 
   it('Should correctly check address validity', () => {
