@@ -8,7 +8,7 @@ export enum Chain {
 
 export enum Protocol {
   EVM = 0x01,
-  EOS = 0x02,
+  ANTELOPE = 0x02,
 }
 
 export enum Version {
@@ -21,5 +21,5 @@ export const chainToProtocolMap = new Map<Chain, Protocol>([
   [Chain.BscMainnet, Protocol.EVM],
   [Chain.GnosisMainnet, Protocol.EVM],
   [Chain.PolygonMainnet, Protocol.EVM],
-  [Chain.EosMainnet, Protocol.EOS],
+  [Chain.EosMainnet, Protocol.ANTELOPE],
 ])

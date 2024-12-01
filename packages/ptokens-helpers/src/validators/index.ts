@@ -8,7 +8,7 @@ const isValidEOSAddress = (_address: string) => {
 }
 
 export function isValidAddressByChainId(_address: string, _protocol: Protocol) {
-  if (_protocol == Protocol.EOS) return isValidEOSAddress(_address)
+  if (_protocol == Protocol.ANTELOPE) return isValidEOSAddress(_address)
   if (_protocol == Protocol.EVM) return validate(_address, 'eth', 'prod')
   throw new Error('Missing address validator')
 }
