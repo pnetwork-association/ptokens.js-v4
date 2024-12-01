@@ -108,13 +108,19 @@ export abstract class pTokensAsset {
   abstract get provider(): pTokensAssetProvider
 
   public abstract swap(
-    _amount: bigint,
+    _amount: bigint | string,
     _destinationChainId: string,
     _recipient: string,
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  public abstract getProofMetadata(_eventId: string): Promise<Metadata>
+  public abstract getProofMetadata(_txId: string, _chain: string): Promise<Metadata>
 
-  public abstract settle<T>(_swapLog: T, _originChain: Chain, _metadata: Metadata): PromiEvent<any>
+  public abstract settle<T>(
+    _originChain: Chain,
+    _signature: string,
+    _swapLog?: T,
+    _preimage?: `0x${string}`,
+    _operation?: Operation,
+  ): PromiEvent<any>
 }
