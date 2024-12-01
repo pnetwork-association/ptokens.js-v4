@@ -9,6 +9,4 @@ export abstract class pTokensAssetProvider {
   abstract waitForTransactionConfirmation(_txHash: string, ...args: any[]): Promise<any>
 
   abstract getSwaps<T>(_adapterAddress: string, _fromBlock: bigint, _chunkSize: bigint): PromiEvent<T>
-
-  abstract makeContractCall<R>(...args: any[]): Promise<R>
 }
