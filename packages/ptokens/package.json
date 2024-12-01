@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "ptokens-assets-antelope": "file:../ptokens-assets-antelope",
     "ptokens-assets-evm": "file:../ptokens-assets-evm",
     "ptokens-constants": "file:../ptokens-constants",
     "ptokens-entities": "file:../ptokens-entities",
