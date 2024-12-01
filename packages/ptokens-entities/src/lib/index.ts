@@ -41,7 +41,7 @@ type Context = {
 }
 
 type Metadata = {
-  signature: string
+  signature: object
 }
 
 export { Metadata, Operation, Context, AssetInfo }
