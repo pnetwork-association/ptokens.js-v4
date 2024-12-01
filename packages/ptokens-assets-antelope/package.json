@@ -1,0 +1,28 @@
+{
+  "name": "ptokens-assets-antelope",
+  "version": "1.0.0",
+  "main": "dist/bundle.cjs.js",
+  "module": "dist/bundle.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c ../../rollup.config.mjs",
+    "dev": "rollup -c ../../rollup.config.mjs -w",
+    "lint": "eslint ./src/",
+    "test": "jest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.26.0",
+    "@wharfkit/session": "^1.4.0",
+    "axios": "^1.7.8",
+    "light-async-polling": "^1.0.2",
+    "promievent": "^0.1.5",
+    "ptokens-constants": "file:../ptokens-constants",
+    "ptokens-entities": "file:../ptokens-entities",
+    "ptokens-helpers": "file:../ptokens-helpers"
+  },
+  "typedoc": {
+    "entryPoint": "./src/index.ts",
+    "displayName": "pTokens EVM asset"
+  }
+}
