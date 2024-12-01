@@ -1,7 +1,7 @@
 import axios from 'axios'
 import PromiEvent from 'promievent'
 import { Chain, Protocol, Version, chainToProtocolMap } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata } from 'ptokens-entities'
+import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
 import { validators } from 'ptokens-helpers'
 import { concat, isAddress, Log, numberToHex, TransactionReceipt, WalletClient } from 'viem'
 
@@ -115,14 +115,14 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  public async getProofMetadata(_eventId: string): Promise<Metadata> {
+  public async getProofMetadata(_txId: string, _chain: string): Promise<Metadata> {
     try {
       const { data } = await axios.post(
-        'https://pnetwork-node-4a.eu.ngrok.io',
+        'https://ec74-35-175-204-96.ngrok-free.app',
         {
           jsonrpc: '2.0',
           method: 'getSignedEvent',
-          params: [_eventId],
+          params: [_chain, _txId],
           id: 1,
         },
         {
@@ -132,21 +132,31 @@ export class pTokensEvmAsset extends pTokensAsset {
         },
       )
       if (!data.signature) throw new Error('Data has been retrieved but no signature is available')
-      return { signature: data.signature as string }
+      return { signature: data.signature as object }
     } catch (_err) {
       throw _err
     }
   }
 
-  public settle<T = Log>(_swapLog: T, _originChain: Chain, _metadata: Metadata): PromiEvent<any> {
+  public settle<T = Log>(
+    _originChain: Chain,
+    _signature: string,
+    _swapLog?: T,
+    _preimage?: `0x${string}`,
+    _operation?: Operation,
+  ): PromiEvent<any> {
+    if (!_swapLog && !(_preimage && _operation))
+      throw new Error('At least one between swapLog or operation and preimage must be provided')
     const promi = new PromiEvent<SettleResult>(
       (resolve, reject) =>
         (async () => {
           try {
             if (!this._provider) return reject(new Error('Missing provider'))
-            const operation = getOperationFromLog(_swapLog as Log, parseInt(_originChain))
-            const preimage = getEventPreImage(_swapLog as Log, this.getContext())
-            const args = [serializeOperation(operation), [preimage, _metadata.signature]]
+            const operation = _operation
+              ? _operation
+              : getOperationFromLog(_swapLog as unknown as Log, parseInt(_originChain))
+            const preimage = _preimage ? _preimage : getEventPreImage(_swapLog as unknown as Log, this.getContext())
+            const args = [serializeOperation(operation), [preimage, _signature]]
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
