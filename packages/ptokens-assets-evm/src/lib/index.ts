@@ -30,6 +30,8 @@ export enum EVENT_NAMES {
   SETTLE = 'Settled',
 }
 
+const TOPIC0 = '0x66756e6473206172652073616675207361667520736166752073616675202e2e'
+
 const SLOT = 32
 
 const events = pNetworkAdapterAbi.filter(({ type }) => type === 'event') as AbiEvent[]
@@ -42,9 +44,8 @@ export const eventNameToSignatureMap = new Map<string, string>(
 )
 
 export const getEventPayload = (_log: Log): `0x${string}` => {
-  const decodedLogArgs = decodeAdapterLog(_log)
   const topics = [0, 1, 2, 3].map((i) => (_log.topics[i] as `0x${string}`) || pad('0x0'))
-  if (!isSwapLog(decodedLogArgs)) throw new Error('Invalid swap event log format')
+  if (!isSwapLog(_log)) throw new Error('Invalid swap event log format')
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   return concat([pad(_log.address), ...topics, _log.data])
 }
@@ -77,10 +78,7 @@ export const serializeOperation = (operation: Operation) => [
   operation.data,
 ]
 
-export const isSwapLog = (
-  args: ReturnType<typeof decodeAdapterLog>,
-): args is { nonce: bigint; eventBytes: { content: `0x${string}` } } =>
-  typeof args === 'object' && args !== null && 'nonce' in args && 'eventBytes' in args
+export const isSwapLog = (_log: Log) => _log.topics[0] === TOPIC0
 
 export const isSettleLog = (args: ReturnType<typeof decodeAdapterLog>): args is { eventId: `0x${string}` } =>
   typeof args === 'object' && args !== null && 'eventId' in args
@@ -100,30 +98,25 @@ export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
   if (!_log.blockHash) throw new Error('blockHash not retreived correctly')
   if (!_log.transactionHash) throw new Error('transactionHash not retreived correctly')
 
-  const decodedLogArgs = decodeAdapterLog(_log)
-  if (!isSwapLog(decodedLogArgs)) throw new Error('Invalid swap event log format')
-  const { nonce, eventBytes } = decodedLogArgs
+  if (!isSwapLog) throw new Error('Invalid swap event log format')
+  const eventBytes = _log.data
 
-  const decodedNonce = slice(eventBytes.content, offset, (offset += SLOT))
-  const erc20 = slice(eventBytes.content, offset, (offset += SLOT))
-  const destinationChainId = slice(eventBytes.content, offset, (offset += SLOT))
-  const amountTransferred = slice(eventBytes.content, offset, (offset += SLOT))
-  const sender = slice(eventBytes.content, offset, (offset += SLOT))
-  const hexRecipientLength = slice(eventBytes.content, offset, (offset += SLOT))
-
-  if (hexToBigInt(decodedNonce) != nonce)
-    throw new Error(`nonce: ${nonce} and decodedNonce: ${decodedNonce} must be equal`)
-
+  const decodedNonce = slice(eventBytes, offset, (offset += SLOT))
+  const erc20 = slice(eventBytes, offset, (offset += SLOT))
+  const destinationChainId = slice(eventBytes, offset, (offset += SLOT))
+  const amountTransferred = slice(eventBytes, offset, (offset += SLOT))
+  const sender = slice(eventBytes, offset, (offset += SLOT))
+  const hexRecipientLength = slice(eventBytes, offset, (offset += SLOT))
   const recipientLength = hexToNumber(hexRecipientLength, { size: 32 })
-  const recipient = hexToString(slice(eventBytes.content, offset, (offset += recipientLength)), {
+  const recipient = hexToString(slice(eventBytes, offset, (offset += recipientLength)), {
     size: recipientLength,
   })
-  const data = size(eventBytes.content) > offset ? slice(eventBytes.content, offset) : '0x'
+  const data = size(eventBytes) > offset ? slice(eventBytes, offset) : '0x'
 
   return {
     blockId: _log.blockHash,
     txId: _log.transactionHash,
-    nonce: nonce,
+    nonce: BigInt(decodedNonce),
     erc20: erc20,
     originChainId: pad(numberToHex(_chainId)),
     destinationChainId: pad(destinationChainId),
@@ -137,7 +130,7 @@ export const getOperationFromLog = (_log: Log, _chainId: number): Operation => {
 export const getLogFromTransactionReceipt = (_swapReceipt: TransactionReceipt<bigint>) => {
   const log = _swapReceipt.logs.find(
     (_log) =>
-      _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SWAP) ||
+      _log.topics[0] === TOPIC0 ||
       _log.topics[0] === eventNameToSignatureMap.get(EVENT_NAMES.SETTLE),
   )
   if (!log) throw new Error('No valid event in the receipt logs')
@@ -202,7 +195,7 @@ export const getLockboxAddress = async (
   }
 }
 
-export const isNativeAsset = async (
+export const isLocalAsset = async (
   _xerc20Address: `0x${string}`,
   _evmProvider: pTokensEvmProvider,
 ): Promise<boolean> => {

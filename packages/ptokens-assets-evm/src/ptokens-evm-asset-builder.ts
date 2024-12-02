@@ -2,7 +2,7 @@ import { Chain, Protocol } from 'ptokens-constants'
 import { pTokensAssetBuilder } from 'ptokens-entities'
 import { stringUtils, getters } from 'ptokens-helpers'
 
-import { getAssetDecimals, getAssetName, getAssetSymbol, getErc20Address, getXerc20Address, isNativeAsset } from './lib'
+import { getAssetDecimals, getAssetName, getAssetSymbol, getErc20Address, getXerc20Address, isLocalAsset } from './lib'
 import { pTokenEvmAssetConfig, pTokensEvmAsset } from './ptokens-evm-asset'
 import { pTokensEvmProvider } from './ptokens-evm-provider'
 
@@ -28,21 +28,21 @@ export class pTokensEvmAssetBuilder extends pTokensAssetBuilder {
     if (!this._assetInfo) {
       const erc20Address = await getErc20Address(adapterAddress, this._provider)
       const xerc20Address = await getXerc20Address(adapterAddress, this._provider)
-      const isNative = await isNativeAsset(xerc20Address, this._provider)
+      const isLocal = await isLocalAsset(xerc20Address, this._provider)
       this.setAssetInfo({
-        isNative: isNative,
+        isLocal: isLocal,
         nativeChain: this._nativeChain,
         chain: getters.getChain(this._provider.chainId),
-        name: isNative
+        name: isLocal
           ? await getAssetName(erc20Address, this._provider)
           : await getAssetName(xerc20Address, this._provider),
-        symbol: isNative
+        symbol: isLocal
           ? await getAssetSymbol(erc20Address, this._provider)
           : await getAssetSymbol(xerc20Address, this._provider),
-        decimals: isNative
+        decimals: isLocal
           ? await getAssetDecimals(erc20Address, this._provider)
           : await getAssetDecimals(xerc20Address, this._provider),
-        address: isNative ? erc20Address : xerc20Address,
+        address: isLocal ? erc20Address : xerc20Address,
         pTokenAddress: xerc20Address,
         nativeTokenAddress: erc20Address,
       })

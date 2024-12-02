@@ -1,9 +1,8 @@
-import axios from 'axios'
 import PromiEvent from 'promievent'
 import { Chain, Protocol, Version, chainToProtocolMap } from 'ptokens-constants'
-import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation } from 'ptokens-entities'
-import { validators } from 'ptokens-helpers'
-import { concat, isAddress, Log, numberToHex, TransactionReceipt, WalletClient } from 'viem'
+import { pTokensAsset, pTokenAssetConfig, SwapResult, SettleResult, Metadata, Operation, Signature } from 'ptokens-entities'
+import { validators, stringUtils } from 'ptokens-helpers'
+import { concat, isAddress, Log, numberToHex, stringToHex, TransactionReceipt, WalletClient } from 'viem'
 
 import PNetworkAdapterAbi from './abi/PNetworkAdapterAbi'
 import {
@@ -42,11 +41,11 @@ export class pTokensEvmAsset extends pTokensAsset {
       throw new Error(
         `Provider chainId: ${config.provider.chainId} do not match with assetInfo chainId: ${parseInt(config.assetInfo.chain)}`,
       )
-    if (config.assetInfo.isNative && config.assetInfo.chain !== config.assetInfo.nativeChain)
+    if (config.assetInfo.isLocal && config.assetInfo.chain !== config.assetInfo.nativeChain)
       throw new Error(
         `Asset is native: its chain: ${config.assetInfo.chain} must match its native asset chain: ${config.assetInfo.nativeChain}`,
       )
-    if (!config.assetInfo.isNative && config.assetInfo.chain === config.assetInfo.nativeChain)
+    if (!config.assetInfo.isLocal && config.assetInfo.chain === config.assetInfo.nativeChain)
       throw new Error(
         `Asset is not native: its chain: ${config.assetInfo.chain} must not match its native asset chain: ${config.assetInfo.nativeChain}`,
       )
@@ -71,7 +70,7 @@ export class pTokensEvmAsset extends pTokensAsset {
   getContext(): `0x${string}` {
     const version = numberToHex(this.version, { size: 1 })
     const protocolId = numberToHex(this.protocol, { size: 1 })
-    const chainId = numberToHex(this.chainId, { size: 32 })
+    const chainId = stringToHex(this.chainId, { size: 32 })
     return concat([version, protocolId, chainId])
   }
 
@@ -102,7 +101,7 @@ export class pTokensEvmAsset extends pTokensAsset {
             const swapLog = getLogFromTransactionReceipt(txReceipt)
             const ret = {
               txHash: txReceipt.transactionHash.toString(),
-              operation: getOperationFromLog(swapLog, this.chainId),
+              operation: getOperationFromLog(swapLog, Number(this.chainId)),
               eventId: getEventIdFromSwapLog(swapLog, this.getContext()),
             }
             promi.emit('txConfirmed', ret)
@@ -115,32 +114,9 @@ export class pTokensEvmAsset extends pTokensAsset {
     return promi
   }
 
-  public async getProofMetadata(_txId: string, _chain: string): Promise<Metadata> {
-    try {
-      const { data } = await axios.post(
-        'https://ec74-35-175-204-96.ngrok-free.app',
-        {
-          jsonrpc: '2.0',
-          method: 'getSignedEvent',
-          params: [_chain, _txId],
-          id: 1,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      )
-      if (!data.signature) throw new Error('Data has been retrieved but no signature is available')
-      return { signature: data.signature as object }
-    } catch (_err) {
-      throw _err
-    }
-  }
-
   public settle<T = Log>(
     _originChain: Chain,
-    _signature: string,
+    _signature: Signature,
     _swapLog?: T,
     _preimage?: `0x${string}`,
     _operation?: Operation,
@@ -156,7 +132,13 @@ export class pTokensEvmAsset extends pTokensAsset {
               ? _operation
               : getOperationFromLog(_swapLog as unknown as Log, parseInt(_originChain))
             const preimage = _preimage ? _preimage : getEventPreImage(_swapLog as unknown as Log, this.getContext())
-            const args = [serializeOperation(operation), [preimage, _signature]]
+            const signature = stringUtils.addHexPrefix(
+              [
+                stringUtils.removeHexPrefix(_signature.r),
+                stringUtils.removeHexPrefix(_signature.s),
+                stringUtils.removeHexPrefix(_signature.v)
+              ].join(''))
+            const args = [serializeOperation(operation), [preimage, signature]]
             const txReceipt: TransactionReceipt = await this._provider
               .makeContractSend(
                 {
