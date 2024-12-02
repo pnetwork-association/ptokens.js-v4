@@ -1,3 +1,4 @@
+export * from 'ptokens-metadata'
 export * from 'ptokens-assets-antelope'
 export * from 'ptokens-assets-evm'
 export * from 'ptokens-constants'

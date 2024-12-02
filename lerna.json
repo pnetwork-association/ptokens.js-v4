@@ -5,7 +5,8 @@
     "packages/ptokens-entities",
     "packages/ptokens-helpers",
     "packages/ptokens-assets-evm",
-    "packages/ptokens-assets-antelope"
+    "packages/ptokens-assets-antelope",
+    "packages/ptokens-metadata"
   ],
   "version": "4.0.0",
   "$schema": "node_modules/lerna/schemas/lerna-schema.json"

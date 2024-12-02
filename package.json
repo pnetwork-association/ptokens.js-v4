@@ -63,6 +63,7 @@
     "packages/ptokens-entities",
     "packages/ptokens-assets-evm",
     "packages/ptokens-assets-antelope",
+    "packages/ptokens-metadata",
     "packages/ptokens"
   ]
 }
