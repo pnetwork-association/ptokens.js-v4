@@ -14,7 +14,7 @@ const pTokenAddress = '0x199A551C5B09F08a03536668416778a4C2239148'
 const nativeChain = Chain.EthereumMainnet
 const chain = Chain.EthereumMainnet
 const nativeAssetInfo: AssetInfo = {
-  isNative: true,
+  isLocal: true,
   nativeChain: nativeChain,
   chain: chain,
   name: 'token-name',
@@ -25,7 +25,7 @@ const nativeAssetInfo: AssetInfo = {
   nativeTokenAddress: nativeTokenAddress,
 }
 const pTokenAssetInfo: AssetInfo = {
-  isNative: false,
+  isLocal: false,
   nativeChain: Chain.GnosisMainnet,
   chain: chain,
   name: 'token-name',
@@ -57,7 +57,7 @@ describe('EVM asset', () => {
     const getAssetDecimalsSpy = jest
       .spyOn(utils, 'getAssetDecimals')
       .mockReturnValue(new Promise((resolve) => resolve(18)))
-    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+    const isLocalAssetSpy = jest.spyOn(utils, 'isLocalAsset')
     const getLockboxAddressSpy = jest
       .spyOn(utils, 'getLockboxAddress')
       .mockReturnValue(new Promise((resolve) => resolve('0x1B48422412528F4d02F8B4B6c6c8a4334E84A57C')))
@@ -79,8 +79,8 @@ describe('EVM asset', () => {
     expect(getAssetSymbolSpy).toHaveBeenCalledWith(nativeTokenAddress, provider)
     expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(1)
     expect(getAssetDecimalsSpy).toHaveBeenCalledWith(nativeTokenAddress, provider)
-    expect(isNativeAssetSpy).toHaveBeenCalledTimes(1)
-    expect(isNativeAssetSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(isLocalAssetSpy).toHaveBeenCalledTimes(1)
+    expect(isLocalAssetSpy).toHaveBeenCalledWith(pTokenAddress, provider)
     expect(asset.adapterAddress).toStrictEqual(adapterAddress)
     expect(asset.protocol).toStrictEqual(Protocol.EVM)
     expect(asset.chainId).toStrictEqual(mainnet.id)
@@ -105,7 +105,7 @@ describe('EVM asset', () => {
     const getAssetDecimalsSpy = jest
       .spyOn(utils, 'getAssetDecimals')
       .mockReturnValue(new Promise((resolve) => resolve(18)))
-    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+    const isLocalAssetSpy = jest.spyOn(utils, 'isLocalAsset')
     const getLockboxAddressSpy = jest
       .spyOn(utils, 'getLockboxAddress')
       .mockReturnValue(new Promise((resolve) => resolve(zeroAddress)))
@@ -127,8 +127,8 @@ describe('EVM asset', () => {
     expect(getAssetSymbolSpy).toHaveBeenCalledWith(pTokenAddress, provider)
     expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(1)
     expect(getAssetDecimalsSpy).toHaveBeenCalledWith(pTokenAddress, provider)
-    expect(isNativeAssetSpy).toHaveBeenCalledTimes(1)
-    expect(isNativeAssetSpy).toHaveBeenCalledWith(pTokenAddress, provider)
+    expect(isLocalAssetSpy).toHaveBeenCalledTimes(1)
+    expect(isLocalAssetSpy).toHaveBeenCalledWith(pTokenAddress, provider)
     expect(asset.adapterAddress).toStrictEqual(adapterAddress)
     expect(asset.protocol).toStrictEqual(Protocol.EVM)
     expect(asset.chainId).toStrictEqual(mainnet.id)
@@ -144,7 +144,7 @@ describe('EVM asset', () => {
     const getAssetNameSpy = jest.spyOn(utils, 'getAssetName')
     const getAssetSymbolSpy = jest.spyOn(utils, 'getAssetSymbol')
     const getAssetDecimalsSpy = jest.spyOn(utils, 'getAssetDecimals')
-    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+    const isLocalAssetSpy = jest.spyOn(utils, 'isLocalAsset')
 
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: nativeChain })
@@ -158,7 +158,7 @@ describe('EVM asset', () => {
     expect(getAssetNameSpy).toHaveBeenCalledTimes(0)
     expect(getAssetSymbolSpy).toHaveBeenCalledTimes(0)
     expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(0)
-    expect(isNativeAssetSpy).toHaveBeenCalledTimes(0)
+    expect(isLocalAssetSpy).toHaveBeenCalledTimes(0)
     expect(asset.adapterAddress).toStrictEqual(adapterAddress)
     expect(asset.protocol).toStrictEqual(Protocol.EVM)
     expect(asset.chainId).toStrictEqual(mainnet.id)
@@ -169,7 +169,7 @@ describe('EVM asset', () => {
 
   it('Should create a EVM asset with provider and assetInfo', async () => {
     const assetInfo: AssetInfo = {
-      isNative: false,
+      isLocal: false,
       nativeChain: Chain.GnosisMainnet,
       chain: chain,
       name: 'token-name',
@@ -186,7 +186,7 @@ describe('EVM asset', () => {
     const getAssetNameSpy = jest.spyOn(utils, 'getAssetName')
     const getAssetSymbolSpy = jest.spyOn(utils, 'getAssetSymbol')
     const getAssetDecimalsSpy = jest.spyOn(utils, 'getAssetDecimals')
-    const isNativeAssetSpy = jest.spyOn(utils, 'isNativeAsset')
+    const isLocalAssetSpy = jest.spyOn(utils, 'isLocalAsset')
 
     const provider = new pTokensEvmProvider(publicClientEthereumMock, walletClientEthereumMock)
     const builder = new pTokensEvmAssetBuilder({ provider: provider, assetNativeChain: Chain.GnosisMainnet })
@@ -200,7 +200,7 @@ describe('EVM asset', () => {
     expect(getAssetNameSpy).toHaveBeenCalledTimes(0)
     expect(getAssetSymbolSpy).toHaveBeenCalledTimes(0)
     expect(getAssetDecimalsSpy).toHaveBeenCalledTimes(0)
-    expect(isNativeAssetSpy).toHaveBeenCalledTimes(0)
+    expect(isLocalAssetSpy).toHaveBeenCalledTimes(0)
     expect(asset.adapterAddress).toStrictEqual(adapterAddress)
     expect(asset.protocol).toStrictEqual(Protocol.EVM)
     expect(asset.chainId).toStrictEqual(mainnet.id)

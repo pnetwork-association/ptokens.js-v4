@@ -11,22 +11,6 @@ import abi from './utils/exampleContractABI'
 import { publicClientEthereumMock, walletClientEthereumMock, walletClientPolygonMock } from './utils/mock-viem-clients'
 import swapReceipt from './utils/swapReceipt.json'
 
-// jest.mock('viem', () => {
-//   const originalModule = jest.requireActual<typeof viem>('viem')
-//   return {
-//     ...originalModule,
-//     createWalletClient: jest.fn().mockImplementation(() => {
-//       return {
-//       account: {
-//         address: '0xdf3B180694aB22C577f7114D822D28b92cadFd75',
-//       },
-//       chain: {
-//         id: 1,
-//       },
-//     } as unknown as WalletClient}),
-//   }
-// })
-
 const adapterAddress = '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'
 const peginSwap = swapReceipt[0] as unknown as TransactionReceipt
 const pegoutSwap = swapReceipt[1] as unknown as TransactionReceipt

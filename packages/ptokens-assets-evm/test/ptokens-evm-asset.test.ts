@@ -1,7 +1,7 @@
 import axios from 'axios'
 import PromiEvent from 'promievent'
 import { Chain, Protocol, Version } from 'ptokens-constants'
-import { AssetInfo, SettleResult, SwapResult } from 'ptokens-entities'
+import { AssetInfo, SettleResult, Signature, SwapResult } from 'ptokens-entities'
 import { TransactionReceipt } from 'viem'
 
 import { pTokensEvmAsset, pTokensEvmProvider } from '../src'
@@ -11,6 +11,7 @@ import { eap } from './utils/eventAttestatorProof'
 import { publicClientEthereumMock, walletClientEthereumMock } from './utils/mock-viem-clients'
 import settleReceipt from './utils/settleReceipt.json'
 import swapReceipt from './utils/swapReceipt.json'
+import { getProofMetadata } from 'ptokens-metadata'
 
 jest.mock('axios')
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -24,7 +25,7 @@ const pTokenAddress = '0x199A551C5B09F08a03536668416778a4C2239148'
 const nativeChain = Chain.EthereumMainnet
 const chain = Chain.EthereumMainnet
 const nativeAssetInfo: AssetInfo = {
-  isNative: true,
+  isLocal: true,
   nativeChain: nativeChain,
   chain: chain,
   name: 'token-name',
@@ -35,7 +36,7 @@ const nativeAssetInfo: AssetInfo = {
   nativeTokenAddress: nativeTokenAddress,
 }
 const pTokenAssetInfo: AssetInfo = {
-  isNative: false,
+  isLocal: false,
   nativeChain: Chain.GnosisMainnet,
   chain: chain,
   name: 'token-name',
@@ -46,7 +47,7 @@ const pTokenAssetInfo: AssetInfo = {
   nativeTokenAddress: nativeTokenAddress,
 }
 const brokenNativeAssetInfo: AssetInfo = {
-  isNative: true,
+  isLocal: true,
   nativeChain: nativeChain,
   chain: chain,
   name: 'token-name',
@@ -57,7 +58,7 @@ const brokenNativeAssetInfo: AssetInfo = {
   nativeTokenAddress: nativeTokenAddress,
 }
 const brokenpTokenAssetInfo: AssetInfo = {
-  isNative: false,
+  isLocal: false,
   nativeChain: Chain.GnosisMainnet,
   chain: chain,
   name: 'token-name',
@@ -439,7 +440,8 @@ describe('EVM asset', () => {
       })
       const axiosMockResponse = { data: { signature: eap[0].signature } }
       mockedAxios.post.mockResolvedValue(axiosMockResponse)
-      const signature = await asset.getProofMetadata(
+      const signature = await getProofMetadata(
+        'attestator-url',
         '0x681c9ff13cb0777400667bcb8491ce325870ca61325bcd2e371b325845a97805',
         'mainnet',
       )
@@ -457,7 +459,7 @@ describe('EVM asset', () => {
       const axiosMockResponse = { data: { signature: undefined } }
       mockedAxios.post.mockResolvedValue(axiosMockResponse)
       try {
-        await asset.getProofMetadata('0x681c9ff13cb0777400667bcb8491ce325870ca61325bcd2e371b325845a97805', 'mainnet')
+        await getProofMetadata('attestator-url', '0x681c9ff13cb0777400667bcb8491ce325870ca61325bcd2e371b325845a97805', 'mainnet')
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -479,7 +481,7 @@ describe('EVM asset', () => {
         version: Version.V1,
       })
       try {
-        await asset['settle'](Chain.EthereumMainnet, signature, peginSwapReceipt.logs[8])
+        await asset['settle'](Chain.EthereumMainnet, signature as Signature, peginSwapReceipt.logs[8])
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -508,7 +510,7 @@ describe('EVM asset', () => {
       })
       let txHashBroadcasted = ''
       let settleResultConfirmed = null
-      const ret = await asset['settle'](Chain.EthereumMainnet, signature, peginSwapReceipt.logs[8])
+      const ret = await asset['settle'](Chain.EthereumMainnet, signature as Signature, peginSwapReceipt.logs[8])
         .on('txBroadcasted', (_txHash) => {
           txHashBroadcasted = _txHash
         })
@@ -563,7 +565,7 @@ describe('EVM asset', () => {
         version: Version.V1,
       })
       try {
-        await asset['settle'](Chain.EthereumMainnet, signature, peginSwapReceipt.logs[8])
+        await asset['settle'](Chain.EthereumMainnet, signature as Signature, peginSwapReceipt.logs[8])
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -587,7 +589,7 @@ describe('EVM asset', () => {
       })
       asset['_provider'] = undefined as unknown as pTokensEvmProvider
       try {
-        await asset['settle'](Chain.EthereumMainnet, signature, peginSwapReceipt.logs[8])
+        await asset['settle'](Chain.EthereumMainnet, signature as Signature, peginSwapReceipt.logs[8])
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
@@ -615,7 +617,7 @@ describe('EVM asset', () => {
         version: Version.V1,
       })
       try {
-        await asset['settle'](Chain.EthereumMainnet, signature, peginSwapReceipt.logs[8])
+        await asset['settle'](Chain.EthereumMainnet, signature as Signature, peginSwapReceipt.logs[8])
         fail()
       } catch (_err) {
         if (!(_err instanceof Error)) throw new Error('Invalid Error type')
