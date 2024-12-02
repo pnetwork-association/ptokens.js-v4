@@ -1,7 +1,7 @@
 import PromiEvent from 'promievent'
 import { Chain, Protocol, Version } from 'ptokens-constants'
 
-import { Operation, Metadata, AssetInfo } from './lib'
+import { Operation, AssetInfo, Signature } from './lib'
 import { pTokensAssetProvider } from './ptokens-asset-provider'
 
 export type pTokenAssetConfig = {
@@ -61,18 +61,18 @@ export abstract class pTokensAsset {
   constructor(_config: pTokenAssetConfig, _protocol: Protocol) {
     if (!_config.assetInfo) throw new Error('Missing asset info')
     if (!_config.version) throw new Error('Missing asset version')
-    if (_config.assetInfo.isNative && _config.assetInfo.chain !== _config.assetInfo.nativeChain)
-      throw new Error(
-        `Asset is native: chain ${_config.assetInfo.chain} and nativeChain ${_config.assetInfo.nativeChain} must be equal`,
-      )
-    if (!_config.assetInfo.isNative && _config.assetInfo.address !== _config.assetInfo.pTokenAddress)
-      throw new Error(
-        `Asset is not native: pTokenAddress ${_config.assetInfo.pTokenAddress} and address ${_config.assetInfo.address} must be equal`,
-      )
-    if (_config.assetInfo.isNative && _config.assetInfo.address !== _config.assetInfo.nativeTokenAddress)
-      throw new Error(
-        `Asset is native: nativeTokenAddress ${_config.assetInfo.nativeTokenAddress} and address ${_config.assetInfo.address} must be equal`,
-      )
+    // if (_config.assetInfo.isLocal && _config.assetInfo.chain !== _config.assetInfo.nativeChain)
+    //   throw new Error(
+    //     `Asset is native: chain ${_config.assetInfo.chain} and nativeChain ${_config.assetInfo.nativeChain} must be equal`,
+    //   )
+    // if (!_config.assetInfo.isLocal && _config.assetInfo.address !== _config.assetInfo.pTokenAddress)
+    //   throw new Error(
+    //     `Asset is not native: pTokenAddress ${_config.assetInfo.pTokenAddress} and address ${_config.assetInfo.address} must be equal`,
+    //   )
+    // if (_config.assetInfo.isLocal && _config.assetInfo.address !== _config.assetInfo.nativeTokenAddress)
+    //   throw new Error(
+    //     `Asset is native: nativeTokenAddress ${_config.assetInfo.nativeTokenAddress} and address ${_config.assetInfo.address} must be equal`,
+    //   )
     this._version = _config.version
     this._protocol = _protocol
     this._assetInfo = _config.assetInfo
@@ -100,8 +100,8 @@ export abstract class pTokensAsset {
   }
 
   /** Return the chain ID of the token. */
-  get chainId(): number {
-    return parseInt(this._assetInfo.chain)
+  get chainId(): string {
+    return this._assetInfo.chain.toString()
   }
 
   /** Return the pTokensAssetProvider eventually assigned */
@@ -114,11 +114,9 @@ export abstract class pTokensAsset {
     _userData?: string,
   ): PromiEvent<SwapResult>
 
-  public abstract getProofMetadata(_txId: string, _chain: string): Promise<Metadata>
-
   public abstract settle<T>(
     _originChain: Chain,
-    _signature: string,
+    _signature: Signature,
     _swapLog?: T,
     _preimage?: `0x${string}`,
     _operation?: Operation,

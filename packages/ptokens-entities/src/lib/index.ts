@@ -1,7 +1,7 @@
 import { Chain } from 'ptokens-constants'
 
 type AssetInfo = {
-  isNative: boolean
+  isLocal: boolean
   /** The chain ID of the native Asset's blockchain. */
   nativeChain: Chain
   /** The chain ID of the asset's blockchain. */
@@ -40,8 +40,22 @@ type Context = {
   privateKey: string | undefined
 }
 
-type Metadata = {
-  signature: object
+type Signature = {
+  r: string
+  s: string
+  v: string
 }
 
-export { Metadata, Operation, Context, AssetInfo }
+type Metadata = {
+  block_id_hash: string
+  data: object
+  event_payload: string
+  origin: string
+  protocol: string
+  public_key: string
+  signature: Signature
+  tx_id_hash: string
+  version: string
+}
+
+export { Metadata, Operation, Context, AssetInfo, Signature }
