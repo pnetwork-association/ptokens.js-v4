@@ -1,17 +1,26 @@
 import { Bytes, TransactResult } from "@wharfkit/session"
 import { Operation } from "ptokens-entities"
+import { zeropad } from "ptokens-helpers/src/string"
 
 const SLOT = 32
 const EOS_TOPIC_ZERO = '0000000000000000000000000000000000000000000000000000000073776170'
 const EOS_ZERO_SLOT = '0000000000000000000000000000000000000000000000000000000000000000'
 
+interface Action {
+  name: string;
+}
+
+interface ActionTrace {
+  act?: Action;
+}
+
 export const getTraceFromTransactionResponse = (_swapResult: TransactResult) => {
-  const actionTraces = _swapResult.response.processed.action_traces
+  const actionTraces = _swapResult.response?.processed.action_traces
   if (!actionTraces) throw new Error('actionTraces not found')
   const trace = actionTraces.find(
-    (actionTrace) =>
-      actionTrace.act.name === 'swap' ||
-      actionTrace.act.name === 'settle',
+    (actionTrace: ActionTrace) =>
+      actionTrace.act?.name === 'swap' ||
+      actionTrace.act?.name === 'settle',
   )
   if (!trace) throw new Error('No valid trace in the receipt logs')
   return trace
@@ -23,7 +32,7 @@ export const getOperationFromTrace = (_trace: any, _chainId: string): Operation 
   if (!_trace.block_id) throw new Error('blockHash not retreived correctly')
   if (!_trace.trx_id) throw new Error('transactionHash not retreived correctly')
 
-  const data: string = _trace.act.data.event_byte
+  const data: string = _trace.act.data.event_bytes
   if (!data) throw new Error('No data found in swap action trace')
 
   const nonce = data.slice(offset, (offset += 2*SLOT))
@@ -60,9 +69,9 @@ export const getEventPayload = (_trace: any): string => {
     EOS_ZERO_SLOT
   ]
   return [
-    String(Bytes.from(_trace.act.account).zeropad(32)),
+    zeropad(Bytes.from(_trace.act.account, 'utf8').toString(), 64),
     ...topics,
-    String(Bytes.from(_trace.act.data).zeropad(32)),
+    Bytes.from(JSON.stringify(_trace.act.data), 'utf8').toString(),
   ].join('')
 }
 

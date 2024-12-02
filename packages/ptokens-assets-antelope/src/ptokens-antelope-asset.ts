@@ -1,12 +1,13 @@
 import PromiEvent from "promievent"
 import { Chain, chainToProtocolMap, Protocol, Version } from "ptokens-constants"
-import { Metadata, Operation, pTokenAssetConfig, pTokensAsset, pTokensAssetProvider, SettleResult, SwapResult } from "ptokens-entities"
+import { Metadata, Operation, pTokenAssetConfig, pTokensAsset, pTokensAssetProvider, SettleResult, Signature, SwapResult } from "ptokens-entities"
 import { Name, Session, TransactResult } from "@wharfkit/session"
 
 import { pTokensAntelopeProvider } from './ptokens-antelope-provider'
-import { validators } from "ptokens-helpers"
+import { validators, stringUtils } from "ptokens-helpers"
 import { getTraceFromTransactionResponse, getOperationFromTrace, getEventPreImage, serializeOperation } from "./lib"
 import axios from "axios"
+import { addHexPrefix, removeHexPrefix, zeropad } from "ptokens-helpers/src/string"
 
 const SWAP_METHOD = 'transfer'
 const SETTLE_METHOD = 'settle'
@@ -38,15 +39,15 @@ export class pTokensAntelopeAsset extends pTokensAsset {
     if (!isValidAccountName(config.assetInfo.pTokenAddress))
       throw new Error(`pTokenAddress ${config.assetInfo.pTokenAddress} must be a valid address`)
     if (!config.version) config.version = Version.V1
-    if (config.assetInfo.chain.toString() !== config.provider.chainId.toString())
+    if (config.assetInfo.chain !== addHexPrefix(config.provider.chainId.toString()))
       throw new Error(
         `Provider chainId: ${config.provider.chainId.toString()} do not match with assetInfo chainId: ${parseInt(config.assetInfo.chain)}`,
       )
-    if (config.assetInfo.isNative && config.assetInfo.chain !== config.assetInfo.nativeChain)
+    if (config.assetInfo.isLocal && config.assetInfo.chain !== config.assetInfo.nativeChain)
       throw new Error(
         `Asset is native: its chain: ${config.assetInfo.chain} must match its native asset chain: ${config.assetInfo.nativeChain}`,
       )
-    if (!config.assetInfo.isNative && config.assetInfo.chain === config.assetInfo.nativeChain)
+    if (!config.assetInfo.isLocal && config.assetInfo.chain === config.assetInfo.nativeChain)
       throw new Error(
         `Asset is not native: its chain: ${config.assetInfo.chain} must not match its native asset chain: ${config.assetInfo.nativeChain}`,
       )
@@ -63,15 +64,15 @@ export class pTokensAntelopeAsset extends pTokensAsset {
    * @param _session - A wharfkit session.
    * @returns The same builder. This allows methods chaining.
    */
-  setSession(_session: Session): this {
-    this._provider.setSession(_session)
+  async setSession(_session: Session): Promise<this> {
+    await this._provider.setSession(_session)
     return this
   }
 
   getContext(): string {
-    const version = this.version.toString(16).padStart(32, '0')
-    const protocolId = this.protocol.toString(16).padStart(32, '0')
-    const chainId = this.chainId.toString(16).padStart(32, '0')
+    const version = this.version.toString(16).padStart(2, '0')
+    const protocolId = this.protocol.toString(16).padStart(2, '0')
+    const chainId = removeHexPrefix(this.chainId).padStart(32, '0')
     return [version, protocolId, chainId].join('')
   }
 
@@ -83,20 +84,21 @@ export class pTokensAntelopeAsset extends pTokensAsset {
             if (!validators.isValidAddressByChainId(_recipient, chainToProtocolMap.get(_destinationChain) as Protocol))
               return reject(new Error(`${_recipient} is not a valid address for chain ${_destinationChain}`))
             if (!this._provider) return reject(new Error('Missing provider'))
-
             const sender = await this._provider.getAccount()
+            const senderName = sender.accountName.toString()
+            const paddedDestinationChain = addHexPrefix(zeropad(removeHexPrefix(_destinationChain), 64))
             const args = {
-              from: sender,
+              from: senderName,
               to: this.adapterAddress,
               quantity: _amount,
-              memo: `${sender},${_destinationChain},${_recipient},${_userData}`,
+              memo: `${senderName},${paddedDestinationChain},${_recipient},${_userData}`,
             }
             const txResult: TransactResult = await this._provider
               .transact(
                 {
                   actionName: SWAP_METHOD,
                   permission: 'active',
-                  contractName: this.adapterAddress
+                  contractName: this.assetInfo.address
                 },
                 args,
               )
@@ -104,10 +106,10 @@ export class pTokensAntelopeAsset extends pTokensAsset {
                 promi.emit('txBroadcasted', { txHash: _hash })
               })
             const trace = getTraceFromTransactionResponse(txResult)
-            const blockId = this._provider.blockId(trace.block_num)
+            const blockId = await this._provider.blockId(trace.block_num)
             const traceWithBlockId = {block_id: blockId, ...trace}
             const ret = {
-              txHash: txResult.response.transaction_id.toString(),
+              txHash: txResult.response?.transaction_id.toString(),
               operation: getOperationFromTrace(traceWithBlockId, this.chainId.toString()),
               preimage: getEventPreImage(traceWithBlockId, this.getContext()),
             }
@@ -121,30 +123,7 @@ export class pTokensAntelopeAsset extends pTokensAsset {
     return promi
   }
 
-  public async getProofMetadata(_txId: string, _chain: string): Promise<Metadata> {
-    try {
-      const { data } = await axios.post(
-        'https://ec74-35-175-204-96.ngrok-free.app',
-        {
-          jsonrpc: '2.0',
-          method: 'getSignedEvent',
-          params: [_chain, _txId],
-          id: 1,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      )
-      if (!data.signature) throw new Error('Data has been retrieved but no signature is available')
-      return { signature: data.signature as object }
-    } catch (_err) {
-      throw _err
-    }
-  }
-
-  settle<T = any>(_originChain: Chain, _signature: string, _swapLog?: T, _preimage?: string, _operation?: Operation): PromiEvent<any> {
+  settle<T = any>(_originChain: Chain, _signature: Signature, _swapLog?: T, _preimage?: string, _operation?: Operation): PromiEvent<any> {
     if (!_swapLog || !(_preimage &&  _operation)) throw new Error('At least one between swapLog or operation and preimage must be provided')
     const promi = new PromiEvent<SettleResult>(
       (resolve, reject) =>
@@ -153,7 +132,13 @@ export class pTokensAntelopeAsset extends pTokensAsset {
             if (!this._provider) return reject(new Error('Missing provider'))
             const operation = _operation ? _operation : getOperationFromTrace(_swapLog, _originChain)
             const preimage = _preimage ? _preimage : getEventPreImage(_swapLog, this.getContext())
-            const args = [serializeOperation(operation), [preimage, _signature]]
+            const signature = stringUtils.addHexPrefix(
+              [
+                stringUtils.removeHexPrefix(_signature.v),
+                stringUtils.removeHexPrefix(_signature.r),
+                stringUtils.removeHexPrefix(_signature.s)
+              ].join(''))
+            const args = [serializeOperation(operation), [preimage, signature]]
             const txResult: TransactResult = await this._provider
               .transact(
                 {
@@ -167,7 +152,7 @@ export class pTokensAntelopeAsset extends pTokensAsset {
                 promi.emit('txBroadcasted', { txHash: _hash })
               })
             const ret = {
-              txHash: txResult.response.transaction_id.toString(),
+              txHash: txResult.response?.transaction_id.toString(),
               eventId: ''
             }
             promi.emit('txConfirmed', ret)

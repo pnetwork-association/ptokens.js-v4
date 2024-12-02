@@ -1,12 +1,11 @@
 import PromiEvent from 'promievent'
-import polling from 'light-async-polling'
 import { Session, Checksum256, TransactResult } from "@wharfkit/session"
 import { APIClient } from '@wharfkit/antelope'
 import { pTokensAssetProvider } from 'ptokens-entities'
 import { ContractKit } from '@wharfkit/contract'
 
 const EOS_TRANSACTION_EXECUTED = 'executed'
-const INIT_ERROR='Provider is not initialized. Use init() in order to initialize the provider'
+const INIT_ERROR = 'Provider is not initialized. Use init() in order to initialize the provider'
 
 type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
 
@@ -39,7 +38,7 @@ export class pTokensAntelopeProvider implements pTokensAssetProvider {
    * Initializes the Provider by fetching the chainId.
    */
   async init() {
-    if (this._chainId) throw Error('Provider already initialized')
+    if (this._chainId) throw new Error('Provider already initialized')
     const providerChain = await this._client.v1.chain.get_info()
     if (!providerChain.chain_id) throw new Error('Provider could not retreive rpc chain info')
     this._chainId = providerChain.chain_id
@@ -54,8 +53,8 @@ export class pTokensAntelopeProvider implements pTokensAssetProvider {
     return this._chainId
   }
 
-  async blockId(blockNum: Number) {
-    return await this._session.client.v1.chain.get_block(blockNum)
+  async blockId(blockNum: Number): Promise<string> {
+    return (await this._client.v1.chain.get_block_info(blockNum)).id.toString()
   }
 
   /**
@@ -74,7 +73,7 @@ export class pTokensAntelopeProvider implements pTokensAssetProvider {
   async setSession(_session: Session): Promise<this> {
     if (!this._chainId) 
       throw new Error(INIT_ERROR)
-    if (_session.chain?.id !== this._chainId)
+    if (_session.chain?.id.toString() !== this._chainId.toString())
       throw new Error(
         `Session chainId ${_session.chain?.id} does not match APIClient chainId ${this._chainId}`,
       )
@@ -91,7 +90,7 @@ export class pTokensAntelopeProvider implements pTokensAssetProvider {
   async waitForTransactionConfirmation(_txHash: string, _pollingTime = 1000): Promise<any> {
     let response: UnwrapPromise<ReturnType<typeof this._client.v1.history.get_transaction>>
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    await polling(async () => {
+    // await polling(async () => {
       try {
         response = await this._client.v1.history.get_transaction(_txHash)
         if (response && response.trx.receipt.status === EOS_TRANSACTION_EXECUTED) return true
@@ -99,7 +98,7 @@ export class pTokensAntelopeProvider implements pTokensAssetProvider {
       } catch (err) {
         return false
       }
-    }, _pollingTime)
+    // }, _pollingTime)
     return response.id
   }
 
@@ -137,7 +136,7 @@ export class pTokensAntelopeProvider implements pTokensAssetProvider {
               promi.emit('txBroadcasted', result.response.transaction_id)
               await this.waitForTransactionConfirmation(result.response.transaction_id)
               promi.emit('txConfirmed', result.response.transaction_id)
-              return resolve(result.response.transaction_id)
+              return resolve(result)
             } else {
               return reject(new Error('Unexpected return value from transact()'))
             }
